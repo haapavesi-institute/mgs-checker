@@ -34,7 +34,8 @@ pub fn describe(input: &str) -> Result<String, JsValue> {
     let q = quiver(input)?;
     let f = facts(&q);
     let rejected = admit(&q).err().map(|e| e.to_string());
-    Ok(serde_json::json!({ "vertices": q.n(), "arrows": q.arrow_text(), "list": q.arrows(), "csv": to_csv(&q), "facts": f, "rejected": rejected })
+    let multiple = q.entries().iter().any(|&b| b >= 2);
+    Ok(serde_json::json!({ "vertices": q.n(), "arrows": q.arrow_text(), "list": q.arrows(), "csv": to_csv(&q), "facts": f, "rejected": rejected, "multiple": multiple })
         .to_string())
 }
 
@@ -79,6 +80,14 @@ pub fn conjecture7_row(item: &str, options: &str) -> Result<String, JsValue> {
     let item: conjecture7::Item = serde_json::from_str(item).map_err(err)?;
     let opts: CheckOptions = serde_json::from_str(options).map_err(err)?;
     json(&conjecture7::run(&item, &opts).map_err(err)?)
+}
+
+/// Conjecture #7 on one quiver with a multiple arrow, oriented cycles allowed: a `conjecture7::Row`.
+#[wasm_bindgen]
+pub fn conjecture7_one(input: &str, options: &str) -> Result<String, JsValue> {
+    let q = quiver(input)?;
+    let opts: CheckOptions = serde_json::from_str(options).map_err(err)?;
+    json(&conjecture7::check_one(&q, 0, &opts).map_err(err)?)
 }
 
 /// Checks one planned quiver (one `Item` from `explore_plan`).

@@ -147,3 +147,16 @@ fn igusa_zhou_theorem_3_12_on_every_quiver_up_to_4_vertices() {
         assert_ne!(row.labels_avoid_multiple, Some(false), "{}", row.arrows);
     }
 }
+
+#[test]
+fn conjecture_7_holds_on_every_open_four_vertex_quiver() {
+    // The open case: an oriented cycle, none through a multiple arrow.
+    use mgs_core::conjecture7::{plan, run, Scope, Spec};
+    let items = plan(&Spec { max_vertices: 4, max_multiplicity: 3, scope: Scope::Open, ..Spec::default() }).unwrap();
+    assert_eq!(items.len(), 40);
+    for item in &items {
+        let row = run(item, &CheckOptions::default()).unwrap();
+        assert!(row.verdict == "holds", "{}: {} {}", row.arrows, row.verdict, row.detail);
+        assert!(!row.oriented_cycle.is_empty());
+    }
+}

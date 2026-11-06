@@ -47,12 +47,15 @@ and an all-text header row are skipped. `1 ⇉ 2 → 3` is
 `--arrows "1->2*2, 2->3"` gives the same quiver inline. Vertices are numbered
 from 1 everywhere.
 
-**The quiver must be acyclic.** One with an oriented cycle, such as the Markov
-quiver, is refused, and the error names a cycle:
+**The quiver must be acyclic: it may have no oriented cycle.** Cycles of the
+underlying graph are fine, as in Ã₂ = 1 → 2 → 3 with 1 → 3. A quiver with an
+oriented cycle, such as the Markov quiver, is refused, and the error names a
+cycle:
 `the quiver has an oriented cycle 1 → 2 → 3 → 1; this checker accepts only acyclic quivers`.
 Everything the checker leans on is stated for acyclic quivers: c-vectors are
 real Schur roots, the shortest MGS has length n, and the Dynkin, tame and No
-Gap theorems all concern path algebras.
+Gap theorems all concern path algebras. The one exception is
+`mgs conjecture7`, whose open scope needs oriented cycles (see below).
 
 ## What a check does
 
@@ -140,40 +143,76 @@ Quiver Quest conjecture #7 says: if no multiple arrow of Q lies on an oriented
 cycle, then every MGS of Q is an MGS of Q′, the quiver with every bundle of two
 or more arrows deleted, with the same c-vector at every step.
 
-For acyclic quivers, the only ones this checker takes, that is a theorem:
-Igusa–Zhou (arXiv:1902.07375v1) Theorem 3.12, "MGSs of an acyclic quiver Q are
-a subset of the set of Q-ME-free MGSs of its ME-free version, Q′", with the same
-C-matrices. Q-ME-free means no c-vector has both ends of a multiple arrow in
-its support. The open part of #7 is quivers with oriented cycles, so a run here
-tests the engine against the theorem; it cannot settle the conjecture.
+For acyclic quivers (no oriented cycle; cycles of the underlying graph, as in
+Ã<sub>n</sub>, are fine) that is a theorem: Igusa–Zhou (arXiv:1902.07375v1)
+Theorem 3.12, "MGSs of an acyclic quiver Q are a subset of the set of Q-ME-free
+MGSs of its ME-free version, Q′", with the same C-matrices. Q-ME-free means no
+c-vector has both ends of a multiple arrow in its support. **The open part is
+quivers with an oriented cycle that avoids every multiple arrow**, and
+`mgs conjecture7` is the one place this checker accepts them. Every other
+command still refuses oriented cycles.
 
-- `mgs check` reports it for any quiver with a multiple arrow, as "Conj. #7".
-- `mgs conjecture7 --max-vertices N --max-multiplicity M` checks every
-  connected acyclic quiver with 2 to N vertices, at most M parallel arrows and
-  at least one multiple arrow, once each up to relabelling.
-  - `--class on-cycle` keeps those with a multiple arrow on a cycle of the
-    underlying graph, as in Ã<sub>n</sub>.
-  - `--class on-cycle-no-cut` also drops those with an Igusa–Zhou partition
-    cut (their Theorem 4.3).
-- The page's Conjecture #7 section does the same, for up to 5 vertices.
+`mgs conjecture7` runs in one of three scopes (`--scope`):
+
+| Scope | Quivers | What a failure would mean |
+|---|---|---|
+| `acyclic` (default) | no oriented cycle | a bug: Igusa–Zhou's theorem covers these |
+| `open` | an oriented cycle, none through a multiple arrow | a counterexample to #7 |
+| `control` | a multiple arrow on an oriented cycle | nothing: #7 claims nothing here, and fails (BHIT's Figure 3) |
+
+- `mgs conjecture7 --arrows "1->2*2, 1->3, 3->2, 2->4, 4->3"` (or a CSV file)
+  checks one quiver with a multiple arrow, in whichever scope it falls.
+  `mgs check` also reports "Conj. #7" for acyclic quivers with a multiple arrow.
+- `mgs conjecture7 --scope open --max-vertices N --max-multiplicity M` checks
+  every connected quiver in the scope with 2 to N vertices, at most M parallel
+  arrows and a multiple arrow, once each up to relabelling.
+  - `--sample K --seed S` draws K random matrices per vertex count instead of
+    listing every one. It is needed once there are more than 20 million
+    matrices to list (with oriented cycles allowed, already at 5 vertices and
+    3 arrows).
+  - `--class on-cycle` keeps quivers with a multiple arrow on a cycle of the
+    underlying graph that is not oriented. `--class on-cycle-no-cut` also
+    drops those with an Igusa–Zhou partition cut (their Theorem 4.3).
+  - Each quiver gets a state budget of 200 000 classes (`--max-states`).
+- The page's Conjecture #7 section does the same, up to 5 vertices for
+  `acyclic` and 4 for the others. It can also check the quiver in the main
+  box, whatever its scope.
 
 For each quiver the check walks every MGS the search counted, plays each step
 on Q′ at the same time, and stops at the first step where Q′ disagrees: a step
 that is red there, a different c-vector, or an MGS of Q that leaves Q′ with
-green vertices. It reports the shortest such prefix. It also flags any step
-c-vector that covers both ends of a multiple arrow.
+green vertices. It reports the shortest such prefix. It also flags a step
+c-vector covering both ends of a multiple arrow, among the steps it walked
+before stopping. With oriented cycles there is no No Gap theorem and no
+"shortest MGS has length n", so more results are conditional on the gap
+assumption or unsettled. BHIT 3.3.2 pruning and sign-coherence hold for every
+quiver, so the search itself is unchanged.
+
+**Open scope: no counterexample so far.**
+
+| Vertices | Most arrows | Quivers | Result |
+|---|---|---|---|
+| 4 | 3 | 40 | all hold: 36 exact, 4 if no gap |
+| 5 | 2 | 2 194, every one | all hold: 1 100 exact, 1 094 if no gap, in 2.9 s |
+| 5, a sample of 5 000 000 matrices (`--seed 1`) | 3 | 14 213 | all hold: 9 888 exact, 4 325 if no gap, in 2.8 s |
+| 6, a sample of 5 000 000 matrices (`--seed 1`) | 2 | 76 034 | 25 114 hold exactly and 50 908 if no gap; 12 unsettled, with no MGS up to length 80; 68 s |
+
+On 4 vertices with `--class on-cycle-no-cut` the open scope has 8 quivers
+with at most 2 arrows and 28 with at most 3. Those are the counts in the board
+post, whose survey sampled only 110 of the 1 461 five-vertex ones.
+
+**Controls, 4 vertices, at most 2 arrows, `--class on-cycle-no-cut`:** 99
+quivers. #7 fails on 76 of them, exactly as in the board post. 16 hold, 2 hold
+if no gap, 3 have no MGS and 2 are unsettled.
+
+**Acyclic scope (Igusa–Zhou's theorem):** every run holds, as it must.
 
 | Vertices | Most arrows | Quivers | Result |
 |---|---|---|---|
 | 2–4 | 2 | 392 | all hold: 346 exact, 46 if no gap |
 | 2–4 | 3 | 2 688 | all hold: 2 556 exact, 132 if no gap |
 | 5 | 2 | 25 694 | all hold: 18 984 exact, 6 710 if no gap, in 1.1 s on 8 threads |
-| 6, `--class on-cycle-no-cut` | 2 | 2 501 668 | all hold: 1 203 271 exact, 1 298 397 if no gap, in 17 min on 8 threads (5.4 GB, `--max-states 200000`) |
-
-None of these runs found a counterexample or a step c-vector covering a
-multiple arrow, as the theorem says. On 4 vertices, `--class on-cycle-no-cut`
-gives 125 quivers, the same as the acyclic class of the survey behind the board
-post.
+| 6, `--class on-cycle-no-cut` | 2 | 2 501 668 | all hold: 1 203 271 exact, 1 298 397 if no gap, in 17 min on 8 threads (5.4 GB) |
 
 ## Validation
 

@@ -33,13 +33,54 @@ pub fn delete_multiple(q: &Exchange) -> (Exchange, Vec<(usize, usize, i64)>) {
     (out, deleted)
 }
 
-/// Some multiple arrow lies on a cycle of the underlying graph: its ends stay
-/// connected once its bundle is removed.
+/// Some multiple arrow lies on a cycle of the underlying graph that is not an
+/// oriented cycle (as in Ã_n).
 pub fn multiple_on_cycle(q: &Exchange) -> bool {
+    let multiple = || q.arrows().into_iter().filter(|&(_, _, m)| m >= 2);
+    if !multiple_on_oriented_cycle(q) {
+        // Then no cycle through a multiple arrow is oriented, so it is enough
+        // that its ends stay connected once its bundle is removed.
+        return multiple().any(|(i, j, _)| {
+            let mut r = q.clone();
+            r.set_pair(i, j, 0);
+            components(&r).iter().any(|c| c.contains(&i) && c.contains(&j))
+        });
+    }
+    multiple().any(|(i, j, _)| unoriented_path(q, i, j, j, &mut vec![false; q.n()], false))
+}
+
+/// A simple path from `at` to `to` in the underlying graph, avoiding the edge
+/// {to, from}, with some step against its arrows (`back`). With the arrows
+/// to → from, that closes a cycle that is not oriented.
+fn unoriented_path(q: &Exchange, to: usize, from: usize, at: usize, seen: &mut Vec<bool>, back: bool) -> bool {
+    if at == to {
+        return back;
+    }
+    seen[at] = true;
+    let found = (0..q.n()).any(|w| {
+        let b = q.get(at, w);
+        b != 0 && !seen[w] && !(at == from && w == to) && unoriented_path(q, to, from, w, seen, back || b < 0)
+    });
+    seen[at] = false;
+    found
+}
+
+/// Some multiple arrow i → j lies on an oriented cycle: there is a path from j back to i.
+pub fn multiple_on_oriented_cycle(q: &Exchange) -> bool {
     q.arrows().into_iter().filter(|&(_, _, m)| m >= 2).any(|(i, j, _)| {
-        let mut r = q.clone();
-        r.set_pair(i, j, 0);
-        components(&r).iter().any(|c| c.contains(&i) && c.contains(&j))
+        let (mut seen, mut stack) = (vec![false; q.n()], vec![j]);
+        seen[j] = true;
+        while let Some(v) = stack.pop() {
+            if v == i {
+                return true;
+            }
+            let next: Vec<usize> = (0..q.n()).filter(|&w| q.get(v, w) > 0 && !seen[w]).collect();
+            for w in next {
+                seen[w] = true;
+                stack.push(w);
+            }
+        }
+        false
     })
 }
 
@@ -188,6 +229,11 @@ mod tests {
         assert_eq!((p.arrow_text(), d), ("2->3".to_string(), vec![(0, 1, 2), (0, 2, 3)]));
         assert!(multiple_on_cycle(&q("1->2*2, 2->3, 1->3")));
         assert!(!multiple_on_cycle(&q("1->2*2, 2->3, 3->4")));
+        assert!(multiple_on_oriented_cycle(&q("1->2, 2->3, 3->1*2"))); // BHIT's Figure 3
+        assert!(!multiple_on_cycle(&q("1->2, 2->3, 3->1*2"))); // its only cycle is oriented
+        assert!(multiple_on_cycle(&q("1->2, 2->3, 3->1*2, 1->4, 3->4"))); // 3 ⇉ 1 → 4 ← 3 is not
+        assert!(!multiple_on_oriented_cycle(&q("1->2*2, 1->3, 3->2, 2->4, 4->3"))); // the cycle 2 → 4 → 3 → 2 avoids 1 ⇉ 2
+        assert!(!multiple_on_oriented_cycle(&q("1->2*2, 2->3, 1->3")));
         assert_eq!(iz_cut(&q("1->2*2, 2->3, 3->4")), Some(2)); // split {1} | {2, 3, 4}
         assert_eq!(iz_cut(&q("1->2*2, 2->3*2, 1->3*4")), Some(2));
         assert_eq!(iz_cut(&q("1->2*2, 2->3, 1->3")), None); // the cycle crosses any split twice

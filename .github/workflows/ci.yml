@@ -18,5 +18,5 @@ jobs:
       - run: cargo build --release -p mgs-wasm --target wasm32-unknown-unknown
       - name: CLI smoke run on every example
         run: for f in examples/*.csv; do cargo run -q --release -p mgs-cli -- check "$f" --sample 3; done
-      - name: Conjecture 7 survey on 4 vertices
-        run: cargo run -q --release -p mgs-cli -- conjecture7 --max-vertices 4 --jobs 2 > /dev/null
+      - name: Conjecture 7 survey on 4 vertices, every scope
+        run: for s in acyclic open control; do cargo run -q --release -p mgs-cli -- conjecture7 --scope $s --max-vertices 4 --jobs 2 > /dev/null; done
