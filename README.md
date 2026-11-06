@@ -8,7 +8,8 @@ assumption of BDP's No Gap Conjecture with a gap you choose.
 - `mgs check matrix.csv`: count, sample and banned prefixes for one quiver
 - `mgs verify matrix.csv --sequence 1,3,2,3`: check one sequence
 - `mgs explore --atilde 2-4 --steps 1`: the fixed explorations around tame quivers
-- `web/`: the same engine compiled to WebAssembly, in a static page that runs in the browser
+- `web/`: the same engine compiled to WebAssembly, in a static page that runs in the browser.
+  It is live at **https://peace-cat-games.github.io/mgs-checker/**.
 
 ## Quick start
 
@@ -21,6 +22,9 @@ cargo build --release
 ./scripts/build-web.sh                 # needs wasm-pack
 python3 -m http.server -d web 8080     # then open http://localhost:8080
 ```
+
+Every push to `main` rebuilds the page and deploys it to GitHub Pages
+(`.github/workflows/pages.yml`). Pull requests build it without deploying.
 
 ## Input
 
@@ -112,6 +116,11 @@ to relabelling, or up to relabelling and reversal with `--up-to-opposite`
 | Ã₂, both squares, Ã(3,1), Ã(4,1), Ã(3,2) | 5, 100, 100, 75, 4 882, 11 346 | BDP Ex. 5.3; Quiver Quest's engine |
 | 15 small quivers, finite type or pruned to exhaustion | counts by length | Quiver Quest's TypeScript engine, an independent implementation |
 
+[Quiver Quest](https://www.peacecatgames.com/quiver-quest) is a separate
+TypeScript implementation with exact BigInt counts. Its
+source is not public; the expected values are written out in
+`crates/mgs-core/tests/literature.rs`.
+
 Beyond the tests:
 - E₈ comes out at exactly 5 641 983 835 250 421 910 131 380 897 514 893 004 210 307 550 157 089 MGS in 4.8 s. That agrees with BDP's ≈ 5.641·10⁵¹ and visits exactly E₈'s 25 080 clusters.
 - The longest MGS of D̃₄ (22), D̃₅ (38), Ẽ₆ (78), Ẽ₇ (159), Ã(4,2) (23) and Ã(5,1) (20) all agree with Kase–Nakashima.
@@ -138,3 +147,10 @@ board, posted as disproved, and its surviving Ã<sub>n−1,1</sub> case.
 - Hermes, Igusa, *The No Gap Conjecture for tame hereditary algebras*, arXiv:1601.04054.
 - Kase, Nakashima, *Lengths of maximal green sequences for tame path algebras*, arXiv:2010.13996 (preprint).
 - Igusa, Zhou, *Maximal green sequences of quivers with multiple edges*, arXiv:1902.07375 (preprint).
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE). Unless you explicitly
+state otherwise, any contribution you submit for inclusion in this work is
+licensed under the same terms, without any additional terms or conditions
+(section 5 of the license).
