@@ -168,6 +168,7 @@ c-vector that covers both ends of a multiple arrow.
 | 2–4 | 2 | 392 | all hold: 346 exact, 46 if no gap |
 | 2–4 | 3 | 2 688 | all hold: 2 556 exact, 132 if no gap |
 | 5 | 2 | 25 694 | all hold: 18 984 exact, 6 710 if no gap, in 1.1 s on 8 threads |
+| 6, `--class on-cycle-no-cut` | 2 | 2 501 668 | all hold: 1 203 271 exact, 1 298 397 if no gap, in 17 min on 8 threads (5.4 GB, `--max-states 200000`) |
 
 None of these runs found a counterexample or a step c-vector covering a
 multiple arrow, as the theorem says. On 4 vertices, `--class on-cycle-no-cut`
