@@ -1,6 +1,6 @@
 name: Pages
 # Builds the WebAssembly page. Pull requests only build it; a push to main
-# also deploys it to https://peace-cat-games.github.io/mgs-checker/.
+# also deploys it to https://haapavesi-institute.github.io/mgs-checker/.
 on:
   push:
     branches: [main]

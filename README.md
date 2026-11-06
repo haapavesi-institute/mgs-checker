@@ -9,7 +9,7 @@ assumption of BDP's No Gap Conjecture with a gap you choose.
 - `mgs verify matrix.csv --sequence 1,3,2,3`: check one sequence
 - `mgs explore --atilde 2-4 --steps 1`: the fixed explorations around tame quivers
 - `web/`: the same engine compiled to WebAssembly, in a static page that runs in the browser.
-  It is live at **https://peace-cat-games.github.io/mgs-checker/**.
+  It is live at **https://haapavesi-institute.github.io/mgs-checker/**.
 
 ## Quick start
 

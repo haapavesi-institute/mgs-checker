@@ -6,8 +6,8 @@ members = ["crates/mgs-core", "crates/mgs-cli", "crates/mgs-wasm"]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-repository = "https://github.com/peace-cat-games/mgs-checker"
-homepage = "https://peace-cat-games.github.io/mgs-checker/"
+repository = "https://github.com/haapavesi-institute/mgs-checker"
+homepage = "https://haapavesi-institute.github.io/mgs-checker/"
 publish = false
 
 [workspace.dependencies]

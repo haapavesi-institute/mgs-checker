@@ -1,6 +1,7 @@
 //! Counts against the literature and against the Quiver Quest engine
-//! (`peace-cat-games/games/quiver-quest/engine`, an independent TypeScript
-//! implementation with bigint arithmetic, run with BHIT 3.3.2 pruning).
+//! (https://www.peacecatgames.com/quiver-quest, an independent TypeScript
+//! implementation with bigint arithmetic, run with BHIT 3.3.2 pruning; its
+//! source is not public, so its values are written out here).
 
 use mgs_core::{check, CheckOptions, Exchange, Report, SearchOptions, Status};
 
