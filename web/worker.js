@@ -1,6 +1,6 @@
 // Runs the WebAssembly checker off the main thread. The page cancels a run by
 // terminating this worker and starting a new one.
-import init, { check_quiver, conjecture7_plan, conjecture7_row, describe, explore_plan, explore_row, verify_sequence } from "./pkg/mgs_wasm.js";
+import init, { check_quiver, conjecture7_one, conjecture7_plan, conjecture7_row, describe, explore_plan, explore_row, verify_sequence } from "./pkg/mgs_wasm.js";
 
 const ready = init();
 
@@ -11,6 +11,7 @@ self.onmessage = async ({ data }) => {
   try {
     if (kind === "describe") reply({ result: JSON.parse(describe(data.input)) });
     else if (kind === "check") reply({ result: JSON.parse(check_quiver(data.input, JSON.stringify(data.options))) });
+    else if (kind === "conjecture7-one") reply({ result: JSON.parse(conjecture7_one(data.input, JSON.stringify(data.options))) });
     else if (kind === "verify") reply({ result: JSON.parse(verify_sequence(data.input, data.sequence)) });
     else if (kind === "explore" || kind === "conjecture7") {
       const [plan, check] = kind === "explore" ? [explore_plan, explore_row] : [conjecture7_plan, conjecture7_row];

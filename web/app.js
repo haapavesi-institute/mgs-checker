@@ -53,7 +53,7 @@ let current = null;
 async function refresh() {
   try {
     current = await call({ kind: "describe", input: $("quiver").value });
-    $("parsed").innerHTML = `${current.vertices} vertices: <code>${arrows(current.arrows)}</code> · ${esc(current.facts.kind_name)}` + (current.rejected ? `<br><span class="error">Refused: ${esc(current.rejected)}.</span>` : "");
+    $("parsed").innerHTML = `${current.vertices} vertices: <code>${arrows(current.arrows)}</code> · ${esc(current.facts.kind_name)}` + (current.rejected ? `<br><span class="error">Refused: ${esc(current.rejected)}.</span>` + (current.multiple ? ` <a href="#conjecture7">Conjecture #7</a> can still check it.` : "") : "");
     draw(current);
   } catch (e) {
     current = null;
@@ -278,14 +278,15 @@ function c7summary() {
     byN.set(r.vertices, m);
   }
   const lines = [...byN].sort((a, b) => a[0] - b[0]).map(([n, m]) => `<li>${n} vertices: ${[...m].map(([v, c]) => `${c.toLocaleString()} ${esc(v)}`).join(", ")}</li>`);
-  const fails = c7rows.filter((r) => r.verdict === "fails").length;
-  $("c7-summary").innerHTML = `<ul>${lines.join("")}</ul><p><strong>${fails ? `${fails} counterexample${fails > 1 ? "s" : ""}` : "No counterexample"}</strong> among ${c7rows.length.toLocaleString()} quivers checked.</p>`;
+  const fails = c7rows.filter((r) => r.verdict === "fails" && r.scope !== "control").length;
+  const control = c7rows.some((r) => r.scope === "control");
+  $("c7-summary").innerHTML = `<ul>${lines.join("")}</ul><p>` + (control ? "These are controls: a multiple arrow lies on an oriented cycle, so conjecture #7 claims nothing and failures are expected." : `<strong>${fails ? `${fails} counterexample${fails > 1 ? "s" : ""}` : "No counterexample"}</strong> among ${c7rows.length.toLocaleString()} quivers checked.`) + "</p>";
 }
 function c7addRow(r) {
   if (c7total > 1000 && r.verdict === "holds") return;
   const tr = document.createElement("tr");
   const badge = r.verdict === "holds" ? (r.proved ? '<span class="badge proved">holds</span>' : '<span class="badge tentative">holds if no gap</span>') : r.verdict === "no MGS" ? "no MGS" : `<span class="badge bad">${esc(r.verdict)}</span>`;
-  tr.innerHTML = `<td>${r.id}</td><td class="mono">${arrows(r.arrows)}</td><td>${esc(r.kind)}</td><td>${r.on_cycle ? "yes" : "no"}</td><td>${r.iz_cut ? `k = ${r.iz_cut}` : "none"}</td><td class="num mono">${esc(r.total)}</td><td title="${esc(r.status)}">${badge}</td><td>${esc(r.detail)}</td>`;
+  tr.innerHTML = `<td>${r.id}</td><td class="mono">${arrows(r.arrows)}</td><td class="mono">${esc(r.oriented_cycle || "—")}</td><td>${esc(r.kind)}</td><td>${r.on_cycle ? "yes" : "no"}</td><td>${r.iz_cut ? `k = ${r.iz_cut}` : "none"}</td><td class="num mono">${esc(r.total)}</td><td title="${esc(r.status)}">${badge}</td><td>${esc(r.detail)}</td>`;
   document.querySelector("#c7-table tbody").append(tr);
 }
 $("c7-run").onclick = async () => {
@@ -296,7 +297,13 @@ $("c7-run").onclick = async () => {
   $("c7-table").hidden = false;
   for (const id of ["c7-run", "c7-csv", "c7-json"]) $(id).disabled = true;
   $("c7-cancel").disabled = false;
-  const spec = { min_vertices: num("c7-min"), max_vertices: num("c7-max"), max_multiplicity: num("c7-m"), class: $("c7-class").value };
+  const spec = { min_vertices: num("c7-min"), max_vertices: num("c7-max"), max_multiplicity: num("c7-m"), scope: $("c7-scope").value, class: $("c7-class").value };
+  if (spec.scope !== "acyclic" && spec.max_vertices > 4) {
+    $("c7-busy").innerHTML = `<span class="error">The open and control scopes go up to 4 vertices here; use <code>mgs conjecture7 --scope ${spec.scope} --max-vertices ${spec.max_vertices}</code>.</span>`;
+    $("c7-run").disabled = false;
+    $("c7-cancel").disabled = true;
+    return;
+  }
   $("c7-busy").textContent = "Listing the quivers…";
   try {
     await call({ kind: "conjecture7", spec, options: options() }, ({ row, progress }) => {
@@ -322,9 +329,20 @@ $("c7-cancel").onclick = () => {
   refresh();
   if (c7rows.length) c7summary();
 };
+$("c7-one").onclick = async () => {
+  $("c7-one-result").innerHTML = '<p class="muted">Checking…</p>';
+  try {
+    const r = await call({ kind: "conjecture7-one", input: $("quiver").value, options: options() });
+    const scope = { acyclic: "acyclic: Igusa–Zhou's Theorem 3.12 covers it", open: "open: an oriented cycle, none through a multiple arrow", control: "control: a multiple arrow lies on an oriented cycle, so conjecture #7 claims nothing" }[r.scope];
+    const verdict = r.verdict === "holds" ? (r.proved ? '<span class="badge proved">holds</span>' : '<span class="badge tentative">holds if no gap</span>') : `<span class="badge ${r.verdict === "no MGS" ? "proved" : "bad"}">${esc(r.verdict)}</span>`;
+    $("c7-one-result").innerHTML = `<div class="status"><p>${verdict} <code>${arrows(r.arrows)}</code> — ${esc(scope)}${r.oriented_cycle ? `; oriented cycle ${esc(r.oriented_cycle)}` : ""}.</p><p class="muted">${esc(r.total)} MGS; ${esc(r.status)}. Q′ = <code>${arrows(r.q_prime)}</code>.${r.detail ? ` ${esc(r.detail)}` : ""}${r.labels_avoid_multiple === false ? " Some step c-vector covers both ends of a multiple arrow." : ""}</p></div>`;
+  } catch (e) {
+    $("c7-one-result").innerHTML = `<p class="error">${esc(e.message)}</p>`;
+  }
+};
 $("c7-json").onclick = () => download("mgs-conjecture7.json", JSON.stringify(c7rows, null, 2), "application/json");
 $("c7-csv").onclick = () => {
-  const cols = ["id", "vertices", "arrows", "kind", "on_cycle", "iz_cut", "total", "longest", "verdict", "proved", "detail", "labels_avoid_multiple", "q_prime", "status"];
+  const cols = ["id", "vertices", "arrows", "scope", "oriented_cycle", "kind", "on_cycle", "iz_cut", "total", "longest", "verdict", "proved", "detail", "labels_avoid_multiple", "q_prime", "status"];
   const q = (v) => (v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   download("mgs-conjecture7.csv", [cols.join(","), ...c7rows.map((r) => cols.map((c) => q(r[c])).join(","))].join("\n") + "\n", "text/csv");
 };

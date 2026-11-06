@@ -144,6 +144,14 @@ pub struct Report {
 /// Checks an acyclic quiver; a quiver with an oriented cycle is refused.
 pub fn check(q: &Exchange, opts: &CheckOptions) -> Result<Report, OrientedCycle> {
     admit(q)?;
+    Ok(check_any(q, opts))
+}
+
+/// The same check with no refusal. Only conjecture #7, whose open case has
+/// oriented cycles, calls it on a cyclic quiver: the search, BHIT pruning
+/// and the c-vector walks are valid for every quiver, while the literature
+/// facts simply don't apply.
+pub(crate) fn check_any(q: &Exchange, opts: &CheckOptions) -> Report {
     let facts = facts(q);
     let (engine, outcome) = search(q, &opts.search);
     let status = match outcome.stop {
@@ -190,7 +198,7 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Result<Report, OrientedCycle>
         Some(length) => Status::AssumptionFails { max_gap: opts.search.max_gap, length },
         None => status,
     };
-    Ok(Report {
+    Report {
         vertices: q.n(),
         matrix: q.rows(),
         arrows: q.arrow_text(),
@@ -209,5 +217,5 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Result<Report, OrientedCycle>
         cut,
         sample,
         banned,
-    })
+    }
 }

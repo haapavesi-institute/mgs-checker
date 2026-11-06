@@ -3,7 +3,9 @@
 //!
 //! Everything the checker leans on is stated for acyclic quivers: c-vectors
 //! are real Schur roots, the shortest MGS has length n (BDP 2.20), and the
-//! Dynkin, tame and No Gap theorems all concern path algebras.
+//! Dynkin, tame and No Gap theorems all concern path algebras. Cycles of the
+//! underlying graph are fine. The one exception is conjecture #7
+//! ([`crate::conjecture7`]), whose open case needs oriented cycles.
 
 use std::fmt;
 

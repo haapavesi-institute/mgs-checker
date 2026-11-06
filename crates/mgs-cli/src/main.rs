@@ -7,7 +7,7 @@ mod conjecture7_cmd;
 mod explore_cmd;
 mod output;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
@@ -53,9 +53,10 @@ enum Command {
     },
     /// Check every quiver one or two edge changes away from chosen tame quivers.
     Explore(explore_cmd::ExploreArgs),
-    /// Quiver Quest conjecture #7 on every connected acyclic quiver with a multiple
-    /// arrow, up to --max-vertices: is each MGS an MGS of the quiver with its
-    /// multiple arrows deleted, with the same c-vectors?
+    /// Quiver Quest conjecture #7, on one quiver or on every small quiver with a
+    /// multiple arrow in a scope: is each MGS an MGS of the quiver with its
+    /// multiple arrows deleted, with the same c-vectors? The open scope allows
+    /// oriented cycles that avoid the multiple arrows.
     Conjecture7(conjecture7_cmd::Conjecture7Args),
 }
 
@@ -93,17 +94,22 @@ impl SearchArgs {
 
 impl Input {
     fn read(&self) -> Result<Exchange, String> {
-        if let Some(text) = &self.arrows {
-            return Exchange::from_arrow_text(text, None).map_err(|e| e.to_string());
-        }
-        let path = self.file.as_ref().expect("clap requires a file or --arrows");
-        let text = if path.as_os_str() == "-" {
-            std::io::read_to_string(std::io::stdin()).map_err(|e| format!("reading standard input: {e}"))?
-        } else {
-            std::fs::read_to_string(path).map_err(|e| format!("reading {}: {e}", path.display()))?
-        };
-        parse_csv(&text).map_err(|e| format!("{}: {e}", path.display()))
+        read_quiver(self.file.as_deref(), self.arrows.as_deref())
     }
+}
+
+/// The quiver from arrows, or else from a CSV file (`-` for standard input).
+pub fn read_quiver(file: Option<&Path>, arrows: Option<&str>) -> Result<Exchange, String> {
+    if let Some(text) = arrows {
+        return Exchange::from_arrow_text(text, None).map_err(|e| e.to_string());
+    }
+    let path = file.ok_or("give a CSV file or --arrows")?;
+    let text = if path.as_os_str() == "-" {
+        std::io::read_to_string(std::io::stdin()).map_err(|e| format!("reading standard input: {e}"))?
+    } else {
+        std::fs::read_to_string(path).map_err(|e| format!("reading {}: {e}", path.display()))?
+    };
+    parse_csv(&text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn main() -> ExitCode {
@@ -122,7 +128,14 @@ fn run(cli: Cli) -> Result<(), String> {
             let q = input.read()?;
             let opts = CheckOptions { search: search.options(), sample, banned_depth, tail, ..CheckOptions::default() };
             let started = std::time::Instant::now();
-            let report = check(&q, &opts).map_err(|e| e.to_string())?;
+            let report = check(&q, &opts).map_err(|e| {
+                let multiple = q.entries().iter().any(|&b| b >= 2);
+                if multiple {
+                    format!("{e}\n(`mgs conjecture7` checks quivers with oriented cycles for conjecture #7)")
+                } else {
+                    e.to_string()
+                }
+            })?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?);
             } else {
