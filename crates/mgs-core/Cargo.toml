@@ -3,6 +3,9 @@ name = "mgs-core"
 description = "Maximal green sequences of quivers: exact counting by length, BHIT 3.3.2 pruning, and the No Gap stopping rule"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 publish.workspace = true
 
 [dependencies]

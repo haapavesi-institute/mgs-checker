@@ -1,0 +1,43 @@
+name: Pages
+# Builds the WebAssembly page. Pull requests only build it; a push to main
+# also deploys it to https://haapavesi-institute.github.io/mgs-checker/.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.13.1
+      - run: ./scripts/build-web.sh
+      - name: Check the page has what it loads
+        run: test -s web/pkg/mgs_wasm.js && test -s web/pkg/mgs_wasm_bg.wasm && ls -l web web/pkg
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
