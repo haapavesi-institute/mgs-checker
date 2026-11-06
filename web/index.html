@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MGS Checker</title>
+  <meta name="description" content="Count every maximal green sequence of a quiver by length, exactly, in the browser.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%232f6b4f%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>MGS Checker</h1>
+  <p>Counts every maximal green sequence of a quiver by length, exactly. It walks the oriented exchange graph one length deeper at a time, and stops when every green sequence has ended or when BDP's No Gap Conjecture says no longer MGS can exist. It always says which of the two happened. It runs entirely in your browser.</p>
+  <nav aria-label="Sections"><a href="#check">Check a quiver</a> · <a href="#explore">Explore around tame quivers</a> · <a href="#method">Method</a></nav>
+</header>
+
+<main>
+<section id="check" aria-labelledby="check-h">
+  <h2 id="check-h">Check a quiver</h2>
+  <div class="grid">
+    <div>
+      <label for="quiver">Exchange matrix as CSV (b<sub>ij</sub> = #(i→j) − #(j→i)), or arrows like <code>1-&gt;2*2, 2-&gt;3</code></label>
+      <textarea id="quiver" rows="7" spellcheck="false">0,2,0
+-2,0,1
+0,-1,0</textarea>
+      <div class="row">
+        <label class="file">Load a CSV file <input type="file" id="file" accept=".csv,.txt,text/csv,text/plain"></label>
+        <span>Examples:</span>
+        <span id="examples" class="chips"></span>
+      </div>
+      <p id="parsed" class="muted" aria-live="polite"></p>
+    </div>
+    <figure>
+      <svg id="drawing" viewBox="-60 -60 120 120" role="img" aria-label="Drawing of the quiver"></svg>
+      <figcaption class="muted">Arrow counts above 1 are written on the arrow.</figcaption>
+    </figure>
+  </div>
+
+  <fieldset>
+    <legend>Search</legend>
+    <label>Max gap <input type="number" id="max-gap" min="0" max="20" value="0"></label>
+    <label>Max length <input type="number" id="max-length" min="1" max="1000" value="80"></label>
+    <label>Max states <input type="number" id="max-states" min="1000" step="1000" value="500000"></label>
+    <label>MGS to list <input type="number" id="sample" min="0" max="10000" value="20"></label>
+    <label>Banned prefixes up to length <input type="number" id="banned-depth" min="0" max="8" value="3"></label>
+    <label class="check"><input type="checkbox" id="prune" checked> Skip steps BHIT 3.3.2 rules out</label>
+    <p class="muted">Max gap 0 is BDP's No Gap Conjecture: stop at the first empty length after the longest MGS found. A larger gap waits longer before concluding. For tame quivers, the No Gap theorem (Hermes–Igusa) makes the stop exact.</p>
+  </fieldset>
+  <div class="row">
+    <button id="run" class="primary">Check</button>
+    <button id="cancel" disabled>Cancel</button>
+    <span id="busy" class="muted" aria-live="polite"></span>
+  </div>
+  <div id="result" aria-live="polite"></div>
+
+  <h3>Verify one sequence</h3>
+  <div class="row">
+    <label>Sequence <input id="sequence" placeholder="1, 3, 2, 3" size="24"></label>
+    <button id="verify">Verify</button>
+  </div>
+  <div id="verified" aria-live="polite"></div>
+</section>
+
+<section id="explore" aria-labelledby="explore-h">
+  <h2 id="explore-h">Explore around tame quivers</h2>
+  <p>Start from tame (Euclidean) quivers. Make one or two edge changes: raise an arrow's multiplicity by one, or add a single arrow between two vertices that had none. Then check every quiver reached, each once up to relabelling.</p>
+  <fieldset>
+    <legend>Starting quivers</legend>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"kronecker"}' checked> Kronecker</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"a-tilde","rank":2}' checked> Ã₂</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"a-tilde","rank":3}' checked> Ã₃</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"a-tilde","rank":4}'> Ã₄</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"a-tilde","rank":5}'> Ã₅</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"d-tilde","rank":4}'> D̃₄</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"d-tilde","rank":5}'> D̃₅</label>
+    <label class="check"><input type="checkbox" name="fam" value='{"family":"e-tilde","rank":6}'> Ẽ₆</label>
+    <label>Orientations
+      <select id="orientations"><option value="all">all, up to relabelling</option><option value="one">one standard one</option></select>
+    </label>
+  </fieldset>
+  <fieldset>
+    <legend>Changes</legend>
+    <label class="check"><input type="checkbox" id="mod-mult" checked> Raise a multiplicity</label>
+    <label class="check"><input type="checkbox" id="mod-new" checked> Add a new edge</label>
+    <label>Steps <select id="steps"><option>0</option><option selected>1</option><option>2</option></select></label>
+    <label class="check"><input type="checkbox" id="base" checked> Include the tame quivers themselves</label>
+    <label class="check"><input type="checkbox" id="opposite"> Treat Q and Q<sup>op</sup> as one</label>
+  </fieldset>
+  <div class="row">
+    <button id="explore-run" class="primary">Explore</button>
+    <button id="explore-cancel" disabled>Cancel</button>
+    <button id="explore-csv" disabled>Download CSV</button>
+    <button id="explore-json" disabled>Download JSON</button>
+    <span id="explore-busy" class="muted" aria-live="polite"></span>
+  </div>
+  <div class="scroll" tabindex="0" role="region" aria-label="Exploration results"><table id="explore-table" hidden>
+    <thead><tr><th scope="col">#</th><th scope="col">From</th><th scope="col">Change</th><th scope="col">Quiver</th><th scope="col">Type</th><th scope="col">MGS</th><th scope="col">Lengths</th><th scope="col">Longest (lit.)</th><th scope="col">Banned first moves</th><th scope="col">Status</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+</section>
+
+<section id="method" aria-labelledby="method-h">
+  <h2 id="method-h">Method</h2>
+  <ul>
+    <li><strong>Convention.</strong> Brüstle–Dupont–Pérotin framing: arrows i → i′ to frozen copies, and green means the c-vector is ≥ 0. Vertices are numbered from 1.</li>
+    <li><strong>Counting.</strong> MGS are paths through the oriented exchange graph (BDP Prop. 2.13–2.14). States are memoised by their c-vectors, which determine the exchange matrix. The search checks this on every reuse. Counts are exact integers of any size.</li>
+    <li><strong>Pruning.</strong> BHIT Cor. 3.3.2 is a theorem with no hypotheses: no MGS ever mutates a vertex that is the target of two or more parallel arrows. Those steps are skipped, which never loses an MGS.</li>
+    <li><strong>Stopping.</strong> The search is exact with no assumption when every green sequence ends. It is exact by theorem when a No Gap theorem covers the quiver (tame: Hermes–Igusa, arXiv:1601.04054). Otherwise it is exact if the lengths of MGS have no gap longer than the chosen max gap (BDP Conjecture 2.22 is gap 0). Green sequences still running past that point are reported as empirically infinite.</li>
+    <li><strong>Tentative bans.</strong> A tentatively banned prefix gets a second, unbounded search with a small budget. That search can prove the ban outright, when every continuation reaches a BHIT 3.3.2 step. It can also refute the gap assumption, by finding a longer MGS.</li>
+    <li><strong>Literature checks.</strong> Acyclic quivers: shortest length n (BDP 2.20). Dynkin: longest |Φ⁺| (BDP 4.4). Tame: longest by Kase–Nakashima (arXiv:2010.13996).</li>
+  </ul>
+</section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+[package]
+name = "mgs-cli"
+description = "Command line for mgs-core: check a quiver's maximal green sequences, verify one, explore around tame quivers"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "mgs"
+path = "src/main.rs"
+
+[dependencies]
+mgs-core.workspace = true
+serde_json.workspace = true
+clap.workspace = true

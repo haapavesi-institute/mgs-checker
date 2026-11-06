@@ -1,0 +1,5 @@
+# BDP Example 5.5, 1 -> 2 -> 3 => 4: 21 MGS, lengths 4 to 7 (exact with BHIT 3.3.2 pruning)
+0,1,0,0
+-1,0,1,0
+0,-1,0,2
+0,0,-2,0

@@ -1,0 +1,5 @@
+# Ã2 with a tail, 3 -> 4: wild, 40 MGS if the No Gap Conjecture holds
+0,1,1,0
+-1,0,1,0
+-1,-1,0,1
+0,0,-1,0
