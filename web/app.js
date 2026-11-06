@@ -148,10 +148,18 @@ function renderReport(r, ms) {
   $("result").innerHTML = h;
 }
 
+function patternText(p) {
+  if (p.kind === "multiple-arrow") return `${p.arrows} arrows ${p.from} → ${p.to}`;
+  const on = `{${p.vertices.join(", ")}}`;
+  return p.kind === "cycle-p1" ? `a full cycle of type (${p.p}, 1) on ${on}` : `a full alternating square on ${on}`;
+}
+
 function seedsHtml(r) {
   const s = r.seeds;
   const scope = { exhausted: "every MGS", "no-gap-theorem": "every MGS", conditional: "every MGS, if the gap assumption holds" }[r.status.kind] ?? `the MGS of length ≤ ${r.searched_to}`;
   let h = `<h3>C-vectors</h3><p>Over ${scope}: <strong>${s.step_c_vectors}</strong> distinct c-vectors at the steps, largest entry <strong>${s.largest_entry}</strong>. The MGS pass through ${s.classes.toLocaleString()} exchange-graph classes, and meet at most ${s.most_arrows} parallel arrows.</p>`;
+  h += `<p>${s.sincere === 0 ? "None is sincere" : `<strong>${s.sincere}</strong> ${s.sincere === 1 ? "is" : "are"} sincere`} (positive at every vertex).</p>`;
+  for (const p of r.patterns ?? []) h += `<p class="muted">Pattern: ${esc(patternText(p))}. No step c-vector covers it (${p.kind === "multiple-arrow" ? "Igusa–Zhou Thm 3.12" : "conjectured"}).</p>`;
   h += `<p class="muted">${s.maximal.length} maximal under the entrywise order (none is ≥ another in every entry), each with a shortest green prefix whose last step has that c-vector.</p>`;
   h += `<div class="scroll" tabindex="0" role="region" aria-label="Maximal c-vectors"><table><thead><tr><th scope="col">c-vector</th><th scope="col" class="num">Total</th><th scope="col">First at the last step of</th></tr></thead><tbody>`;
   for (const m of s.maximal) h += `<tr><td class="mono">(${m.vector.join(", ")})</td><td class="num">${m.vector.reduce((a, b) => a + b, 0)}</td><td class="mono">${seq(m.prefix)}</td></tr>`;

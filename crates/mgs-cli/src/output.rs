@@ -66,6 +66,11 @@ pub fn report_text(r: &Report, took: Duration) -> String {
         if sd.maximal.len() > MAXIMAL_SHOWN {
             let _ = writeln!(s, "  … and {} more (all of them are in --json)", sd.maximal.len() - MAXIMAL_SHOWN);
         }
+        let _ = writeln!(s, "Sincere    {} of the step c-vectors are positive at every vertex", sd.sincere);
+    }
+    for p in &r.patterns {
+        let status = if p.proved() { "Igusa–Zhou Thm 3.12" } else { "conjectured" };
+        let _ = writeln!(s, "Pattern    {}: no step c-vector covers it ({status})", p.describe());
     }
     if let Some(c) = &r.cut {
         let scope = if r.status.settled() { "every MGS".to_string() } else { format!("every MGS of length ≤ {}", r.searched_to) };

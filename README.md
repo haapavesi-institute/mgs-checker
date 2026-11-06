@@ -12,6 +12,7 @@ visit. Quivers with an oriented cycle are refused.
 - `mgs verify matrix.csv --sequence 1,3,2,3`: check one sequence
 - `mgs explore --atilde 2-4 --steps 1`: the fixed explorations around tame quivers
 - `mgs conjecture7 --max-vertices 5`: Quiver Quest conjecture #7 on every small acyclic quiver with a multiple arrow
+- `mgs sincere --max-vertices 5`: sincere c-vectors over a family of quivers, testing the inheritance conjecture
 - `web/`: the same engine compiled to WebAssembly, in a static page that runs in the browser.
   It is live at **https://haapavesi-institute.github.io/mgs-checker/**.
 
@@ -23,6 +24,7 @@ cargo build --release
 ./target/release/mgs check --arrows "1->2, 2->3, 1->3, 3->4" --max-gap 2
 ./target/release/mgs explore --kronecker --atilde 2-3 --dtilde 4 --format csv --out explore.csv
 ./target/release/mgs conjecture7 --max-vertices 5 --jobs 8 --format csv --out conjecture7.csv
+./target/release/mgs sincere --family cycles --min-vertices 3 --max-vertices 8 --jobs 8
 
 ./scripts/build-web.sh                 # needs wasm-pack
 python3 -m http.server -d web 8080     # then open http://localhost:8080
@@ -299,6 +301,89 @@ c-vector covers C.
   The map is not onto, and its fibres reach 371 on 6 vertices.
 - Simply laced quivers stop by the No Gap rule (max gap 0). On 5 vertices
   the totals do not change with `--max-gap 8`.
+
+## Sincere c-vectors and the inheritance conjecture
+
+Write S(Q) for the c-vectors at the steps of Q's maximal green sequences, and
+Sinc(Q) for the sincere ones: positive at every vertex. A c-vector *covers* a
+vertex set if its support contains it.
+
+**Why sincere ones matter.** Keeping the steps of an MGS whose c-vector
+vanishes at v gives an MGS of Q ∖ v (Muller; it is the lattice quotient of
+Demonet–Iyama–Reading–Reiten–Thomas). So every c ∈ S(Q) is a sincere step
+c-vector of the full subquiver on its support, and Q has finitely many MGS
+once every connected full subquiver has finitely many sincere step c-vectors.
+
+**Inheritance conjecture.** If a connected acyclic quiver has no sincere step
+c-vector, then neither does any connected acyclic quiver that contains it as a
+full subquiver.
+
+- Igusa–Zhou's Theorem 3.12 is the case of a multiple arrow: no c-vector has
+  both of its ends in its support. Quiver Quest's conjecture #10 is the case
+  of a cycle of type Ã(p, 1) in a one-cycle quiver.
+- Adding one vertex at a time, it is enough to check: if Q ∖ v is connected and
+  Sinc(Q ∖ v) is empty, then Sinc(Q) is empty.
+
+**The command.** `mgs sincere` surveys a family of quivers (`--family all`,
+`trees`, `one-cycle`, `cycles` for bare cycles in every orientation, or
+`tournament`), from `--min-vertices` to `--max-vertices`, with at most
+`--max-multiplicity` parallel arrows. For each quiver it finds S(Q) and
+Sinc(Q), and Sinc(Q ∖ v) for every v with Q ∖ v connected. It reports:
+
+- every counterexample to inheritance;
+- every *minimal* quiver with no sincere c-vector (each connected Q ∖ v has
+  one), marked as a known pattern or as new;
+- every known pattern that some c-vector covers.
+
+The known patterns (`mgs_core::patterns`) are a multiple arrow, a full cycle
+of type (p, 1), and a full alternating square (two sources, two sinks).
+`mgs check` lists the ones a quiver contains, and how many of its step
+c-vectors are sincere.
+
+**Results** (simply laced searches stop by the No Gap rule; the 5-vertex ones
+are unchanged with `--max-gap 6`):
+
+| Family | Quivers | One-vertex extensions checked | Inheritance fails | Minimal quivers found |
+|---|---|---|---|---|
+| all, 2–4 vertices, ≤ 3 arrows | 2 717 | 9 490 | 0 | Kronecker ×2, ×3; Ã(2,1); Ã(3,1); alternating square |
+| all, 5 vertices, ≤ 2 arrows | 25 961 | 120 720 | 0 | Ã(4,1) |
+| all, 6 vertices, single arrows | 5 647 | 27 100 | 0 | Ã(5,1), and one new quiver |
+| bare cycles, 3–8 vertices | 38 | — | — | Ã(p,1) for p = 2 … 7; alternating square |
+
+- **Bare cycles.** Among all orientations of a cycle with 3 to 8 vertices,
+  exactly Ã(p, 1) and the alternating square have no sincere step c-vector.
+  Every other orientation has some, with no entry above 2. These are tame, so
+  the results are exact.
+- **Covering.** On the 5 647 six-vertex quivers, no step c-vector covers any
+  of the 22 209 triangles, the 3 112 longer cycles of type (p, 1), or the 1 365
+  alternating squares. This is what inheritance predicts from the bare cycles.
+- **Up to 5 vertices** (≤ 2 arrows up to 4 vertices, single arrows on 5) a
+  quiver has a sincere step c-vector exactly when it contains no known pattern.
+- **A new minimal quiver on 6 vertices:** 1 → 2 → 5, 1 → 3 → 5, 1 → 6, 4 → 5,
+  the one-source square with an arrow out of its source and one into its sink.
+  It is wild, has no sincere step c-vector, and contains no known pattern. So
+  the minimal quivers are not all cycles, and their full list is open.
+
+**What inheritance would give.** If every chordless cycle of Q is of type
+(p, 1) or an alternating square, or carries a multiple arrow, then every step
+c-vector is supported on an induced subtree, so Q is MGS-finite as soon as its
+induced subtrees are (for example when they are Dynkin or affine). An example
+is the transitive tournament on n vertices (i → j for all i < j). Its step
+c-vectors are exactly the e<sub>i</sub> and e<sub>i</sub> + e<sub>j</sub>, and
+it has 2, 5, 13, 34, 89, 233 MGS for n = 2 … 7: the Fibonacci numbers
+F<sub>2n−1</sub>.
+
+**What it does not give, and what failed.** Quivers that do have sincere
+c-vectors still need a bound on them. Wild trees are the hard case: six-vertex
+wild trees have up to 84 sincere step c-vectors, with entries up to 6.
+- *Lifting fails.* A step c-vector of a full subquiver need not be one of Q:
+  this happens on 5 of the 267 simply laced 5-vertex quivers, and often with
+  multiple arrows. Restriction of MGS is therefore not onto.
+- *A τ-neighbour rule fails.* "Every sincere step c-vector is projective,
+  injective, or one τ-step from a non-sincere step c-vector" would prove
+  finiteness by induction. It holds on 5 vertices and fails on 6-vertex wild
+  trees. `examples/tau_positions.rs` records this, and `examples/local_cycles.rs`
+  the covering counts by cycle type and the lifting check.
 
 ## References
 

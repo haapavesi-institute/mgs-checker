@@ -11,6 +11,8 @@
 //!   c-vectors and the maximal ones under the entrywise order.
 //! - [`verify::verify`] checks one given sequence.
 //! - [`explore`] runs the fixed explorations around tame quivers.
+//! - [`sincere`] surveys the inheritance conjecture for sincere c-vectors,
+//!   with the patterns of [`patterns`].
 //! - [`conjecture7`] checks Quiver Quest conjecture #7 ([`cutting`]) on
 //!   every small acyclic quiver with a multiple arrow.
 //!
@@ -33,8 +35,10 @@ pub mod framed;
 pub mod known;
 pub mod matrix;
 pub mod modify;
+pub mod patterns;
 pub mod report;
 pub mod seeds;
+pub mod sincere;
 pub mod verify;
 pub mod walk;
 

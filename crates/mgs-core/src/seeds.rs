@@ -33,6 +33,8 @@ pub struct Seeds {
     pub classes: usize,
     /// Distinct c-vectors at the steps of the MGS.
     pub step_c_vectors: usize,
+    /// How many of them are sincere: positive at every vertex.
+    pub sincere: usize,
     /// The step c-vectors with no other step c-vector ≥ them in every entry: by total, largest first.
     pub maximal: Vec<MaximalC>,
     /// The largest entry of any step c-vector.
@@ -46,10 +48,12 @@ fn most_arrows(f: &Framed) -> i64 {
     (0..n).flat_map(|i| (0..n).map(move |j| (i, j))).map(|(i, j)| f.b(i, j).abs()).max().unwrap_or(0)
 }
 
+/// Classes on MGS, every step c-vector with a shortest prefix reaching it, and the most arrows met.
+type Walk = (usize, FxHashMap<Box<[i64]>, Vec<u8>>, i64);
+
 impl Engine {
-    /// The MGS of length ≤ `bound` from `start`, or None if there are none.
-    /// Call it after a search that reached `bound`: it only reads the memo.
-    pub fn seeds(&self, start: &Framed, bound: u32) -> Option<Seeds> {
+    /// One breadth-first pass over the MGS of length ≤ `bound`; None if there are none.
+    fn walk(&self, start: &Framed, bound: u32) -> Option<Walk> {
         let root = self.lookup(start)?;
         if !root.counts.any_within(bound) {
             return None;
@@ -83,14 +87,30 @@ impl Engine {
             }
             layer = next;
         }
+        Some((seen.len(), steps, most))
+    }
+
+    /// The MGS of length ≤ `bound` from `start`, or None if there are none.
+    /// Call it after a search that reached `bound`: it only reads the memo.
+    pub fn seeds(&self, start: &Framed, bound: u32) -> Option<Seeds> {
+        let (classes, steps, most) = self.walk(start, bound)?;
         let maximal = maximal(steps.iter().map(|(v, p)| (&**v, p)));
         Some(Seeds {
-            classes: seen.len(),
+            classes,
             step_c_vectors: steps.len(),
+            sincere: steps.keys().filter(|v| v.iter().all(|&x| x > 0)).count(),
             largest_entry: maximal.iter().flat_map(|m| m.vector.iter().copied()).max().unwrap_or(0),
             maximal,
             most_arrows: most,
         })
+    }
+
+    /// Every distinct step c-vector of the MGS of length ≤ `bound`, sorted; empty if there are none.
+    pub fn step_c_vectors(&self, start: &Framed, bound: u32) -> Vec<Vec<i64>> {
+        let mut all: Vec<Vec<i64>> =
+            self.walk(start, bound).map_or_else(Vec::new, |(_, steps, _)| steps.into_keys().map(|v| v.to_vec()).collect());
+        all.sort();
+        all
     }
 }
 
