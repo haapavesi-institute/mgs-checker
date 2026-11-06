@@ -6,6 +6,7 @@ mod batch;
 mod conjecture7_cmd;
 mod explore_cmd;
 mod output;
+mod sincere_cmd;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -58,6 +59,10 @@ enum Command {
     /// multiple arrows deleted, with the same c-vectors? The open scope allows
     /// oriented cycles that avoid the multiple arrows.
     Conjecture7(conjecture7_cmd::Conjecture7Args),
+    /// Survey sincere step c-vectors over a family of acyclic quivers: test the
+    /// inheritance conjecture, list the minimal quivers with no sincere c-vector,
+    /// and flag any known pattern that a c-vector covers.
+    Sincere(sincere_cmd::SincereArgs),
 }
 
 #[derive(Args)]
@@ -153,6 +158,7 @@ fn run(cli: Cli) -> Result<(), String> {
         }
         Command::Explore(args) => explore_cmd::run(&args)?,
         Command::Conjecture7(args) => conjecture7_cmd::run(&args)?,
+        Command::Sincere(args) => sincere_cmd::run(&args)?,
     }
     Ok(())
 }

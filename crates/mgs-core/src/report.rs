@@ -11,6 +11,7 @@ use crate::engine::{search, SearchOptions, Stop};
 use crate::framed::Framed;
 use crate::known::{facts, Facts};
 use crate::matrix::Exchange;
+use crate::patterns::{patterns, Pattern};
 use crate::seeds::Seeds;
 use crate::walk::{BanOptions, BanReason, Banned, Bound};
 
@@ -134,6 +135,9 @@ pub struct Report {
     pub agreements: Vec<Agreement>,
     /// What the MGS of length ≤ `searched_to` pass through; None if there are none.
     pub seeds: Option<Seeds>,
+    /// Multiple arrows, full cycles of type (p, 1) and alternating squares: sets no step c-vector covers
+    /// (a theorem for multiple arrows, conjectured for the others; see `patterns`).
+    pub patterns: Vec<Pattern>,
     /// Conjecture #7 on those MGS: are they MGS of Q with its multiple arrows deleted? None without a multiple arrow or an MGS.
     pub cut: Option<CutCheck>,
     pub sample: Vec<Vec<usize>>,
@@ -214,6 +218,7 @@ pub(crate) fn check_any(q: &Exchange, opts: &CheckOptions) -> Report {
         states: engine.states(),
         agreements,
         seeds,
+        patterns: patterns(q),
         cut,
         sample,
         banned,
