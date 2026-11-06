@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::acyclic::{admit, OrientedCycle};
+use crate::cutting::CutCheck;
 use crate::engine::{search, SearchOptions, Stop};
 use crate::framed::Framed;
 use crate::known::{facts, Facts};
@@ -133,6 +134,8 @@ pub struct Report {
     pub agreements: Vec<Agreement>,
     /// What the MGS of length ≤ `searched_to` pass through; None if there are none.
     pub seeds: Option<Seeds>,
+    /// Conjecture #7 on those MGS: are they MGS of Q with its multiple arrows deleted? None without a multiple arrow or an MGS.
+    pub cut: Option<CutCheck>,
     pub sample: Vec<Vec<usize>>,
     /// Empty unless the status is settled.
     pub banned: Vec<Banned>,
@@ -169,6 +172,7 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Result<Report, OrientedCycle>
     let start = Framed::new(q);
     let sample = if root.is_some() { engine.sample(&start, bound, opts.sample) } else { Vec::new() };
     let seeds = engine.seeds(&start, bound);
+    let cut = engine.cut_check(q, bound, opts.search.max_states);
     let ban = BanOptions {
         depth: opts.banned_depth,
         limit: opts.banned_limit,
@@ -202,6 +206,7 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Result<Report, OrientedCycle>
         states: engine.states(),
         agreements,
         seeds,
+        cut,
         sample,
         banned,
     })

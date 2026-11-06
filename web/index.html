@@ -12,7 +12,7 @@
 <header>
   <h1>MGS Checker</h1>
   <p>Counts every maximal green sequence of an acyclic quiver by length, exactly, and finds the maximal c-vectors its MGS pass through. It walks the oriented exchange graph one length deeper at a time, and stops when every green sequence has ended or when BDP's No Gap Conjecture says no longer MGS can exist. It always says which of the two happened. Quivers with an oriented cycle are refused. It runs entirely in your browser.</p>
-  <nav aria-label="Sections"><a href="#check">Check a quiver</a> · <a href="#explore">Explore around tame quivers</a> · <a href="#method">Method</a></nav>
+  <nav aria-label="Sections"><a href="#check">Check a quiver</a> · <a href="#explore">Explore around tame quivers</a> · <a href="#conjecture7">Conjecture #7</a> · <a href="#method">Method</a></nav>
 </header>
 
 <main>
@@ -96,6 +96,31 @@
   </div>
   <div class="scroll" tabindex="0" role="region" aria-label="Exploration results"><table id="explore-table" hidden>
     <thead><tr><th scope="col">#</th><th scope="col">From</th><th scope="col">Change</th><th scope="col">Quiver</th><th scope="col">Type</th><th scope="col">MGS</th><th scope="col">Lengths</th><th scope="col">Longest (lit.)</th><th scope="col">Maximal c-vectors</th><th scope="col">Banned first moves</th><th scope="col">Status</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+</section>
+
+<section id="conjecture7" aria-labelledby="c7-h">
+  <h2 id="c7-h">Conjecture #7: delete the multiple arrows</h2>
+  <p>Quiver Quest conjecture #7: if no multiple arrow lies on an oriented cycle, every MGS of Q is an MGS of Q′, the quiver with every bundle of two or more arrows deleted, with the same c-vector at every step. For acyclic quivers, the only ones this checker takes, that is Igusa–Zhou's Theorem 3.12 (arXiv:1902.07375). So this run tests the engine against a theorem; the open part of #7, quivers with oriented cycles, is outside it. It checks every connected acyclic quiver with a multiple arrow, once each up to relabelling, with the search settings above.</p>
+  <fieldset>
+    <legend>Quivers</legend>
+    <label>Vertices from <input type="number" id="c7-min" min="2" max="5" value="2"></label>
+    <label>to <input type="number" id="c7-max" min="2" max="5" value="4"></label>
+    <label>Most parallel arrows <input type="number" id="c7-m" min="2" max="3" value="2"></label>
+    <label>Which <select id="c7-class"><option value="all">all with a multiple arrow</option><option value="on-cycle">multiple arrow on a cycle</option><option value="on-cycle-no-cut">on a cycle, no IZ cut</option></select></label>
+    <p class="muted">Up to 4 vertices and 2 arrows is 392 quivers; 5 vertices adds about 25,700. Larger surveys run from the command line: <code>mgs conjecture7 --max-vertices 6</code>. With more than 1,000 quivers, the table lists only those that don't plainly hold; the downloads have every row.</p>
+  </fieldset>
+  <div class="row">
+    <button id="c7-run" class="primary">Check conjecture #7</button>
+    <button id="c7-cancel" disabled>Cancel</button>
+    <button id="c7-csv" disabled>Download CSV</button>
+    <button id="c7-json" disabled>Download JSON</button>
+    <span id="c7-busy" class="muted" aria-live="polite"></span>
+  </div>
+  <div id="c7-summary" aria-live="polite"></div>
+  <div class="scroll" tabindex="0" role="region" aria-label="Conjecture 7 results"><table id="c7-table" hidden>
+    <thead><tr><th scope="col">#</th><th scope="col">Quiver</th><th scope="col">Type</th><th scope="col">On a cycle</th><th scope="col">IZ cut</th><th scope="col">MGS</th><th scope="col">Verdict</th><th scope="col">Detail</th></tr></thead>
     <tbody></tbody>
   </table></div>
 </section>

@@ -133,3 +133,17 @@ fn bans_on_the_worked_example() {
     let prefixes: Vec<&Vec<usize>> = r.banned.iter().map(|b| &b.prefix).collect();
     assert!(prefixes.contains(&&vec![2]) && prefixes.contains(&&vec![3, 2]));
 }
+
+#[test]
+fn igusa_zhou_theorem_3_12_on_every_quiver_up_to_4_vertices() {
+    // Every MGS of an acyclic quiver is an MGS of its ME-free version, with the
+    // same c-vectors (Igusa–Zhou, arXiv:1902.07375v1, Thm 3.12): conjecture #7's acyclic case.
+    use mgs_core::conjecture7::{plan, run, Spec};
+    let items = plan(&Spec { max_vertices: 4, max_multiplicity: 2, ..Spec::default() }).unwrap();
+    assert_eq!(items.len(), 392);
+    for item in &items {
+        let row = run(item, &CheckOptions::default()).unwrap();
+        assert!(row.verdict == "holds" || row.verdict == "no MGS", "{}: {} {}", row.arrows, row.verdict, row.detail);
+        assert_ne!(row.labels_avoid_multiple, Some(false), "{}", row.arrows);
+    }
+}

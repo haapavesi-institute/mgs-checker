@@ -70,3 +70,6 @@ details { margin: .5rem 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 footer { margin-top: 2.5rem; padding-bottom: 2rem; }
 footer p { border-top: 1px solid var(--line); padding-top: 1rem; }
+fieldset { min-width: 0; }
+select { max-width: 100%; }
+p code { overflow-wrap: anywhere; }

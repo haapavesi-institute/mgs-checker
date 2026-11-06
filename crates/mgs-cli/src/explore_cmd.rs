@@ -2,8 +2,6 @@
 //! parallel, written as a Markdown table, CSV or JSON.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 
 use clap::{Args, ValueEnum};
 use mgs_core::explore::{plan, run as run_item, ExploreSpec, Row};
@@ -11,6 +9,7 @@ use mgs_core::families::{Family, Orientations};
 use mgs_core::modify::Mods;
 use mgs_core::CheckOptions;
 
+use crate::batch::{parallel, render, write, Format};
 use crate::SearchArgs;
 
 #[derive(Args)]
@@ -66,13 +65,6 @@ enum Change {
     NewEdge,
 }
 
-#[derive(Clone, Copy, ValueEnum)]
-enum Format {
-    Markdown,
-    Csv,
-    Json,
-}
-
 /// Ranks given as "2-4" or "2,3,5".
 #[derive(Clone, Debug)]
 pub struct Ranks(Vec<usize>);
@@ -118,32 +110,19 @@ pub fn run(a: &ExploreArgs) -> Result<(), String> {
     let items = plan(&spec)?;
     let opts = CheckOptions { search: a.search.options(), ..CheckOptions::default() };
     eprintln!("mgs: checking {} quivers", items.len());
-    let next = AtomicUsize::new(0);
-    let rows: Mutex<Vec<Option<Row>>> = Mutex::new(vec![None; items.len()]);
-    std::thread::scope(|scope| {
-        for _ in 0..a.jobs.max(1) {
-            scope.spawn(|| loop {
-                let i = next.fetch_add(1, Ordering::Relaxed);
-                let Some(item) = items.get(i) else { break };
-                let row = run_item(item, &opts).expect("planned quivers are valid");
-                eprintln!("mgs: [{}/{}] {} {} — {} MGS", i + 1, items.len(), item.base, item.change, row.total);
-                rows.lock().expect("no panics while holding the lock")[i] = Some(row);
-            });
-        }
+    let rows: Vec<Row> = parallel(&items, a.jobs, |i, item| {
+        let row = run_item(item, &opts).expect("planned quivers are valid");
+        eprintln!("mgs: [{}/{}] {} {} — {} MGS", i + 1, items.len(), item.base, item.change, row.total);
+        row
     });
-    let rows: Vec<Row> = rows.into_inner().expect("threads finished").into_iter().map(|r| r.expect("every item ran")).collect();
-    let text = match a.format {
-        Format::Markdown => markdown(&rows),
-        Format::Csv => csv(&rows),
-        Format::Json => serde_json::to_string_pretty(&rows).map_err(|e| e.to_string())? + "\n",
+    let mut header = HEADER.to_vec();
+    header.extend(["banned first moves", "status"]);
+    let all_cells = |r: &Row| {
+        let mut c = cells(r).to_vec();
+        c.extend([r.banned_first.clone(), r.status.clone()]);
+        c
     };
-    match &a.out {
-        Some(path) => std::fs::write(path, text).map_err(|e| format!("writing {}: {e}", path.display())),
-        None => {
-            print!("{text}");
-            Ok(())
-        }
-    }
+    write(a.out.as_deref(), &render(&rows, &header, all_cells, a.format)?)
 }
 
 const HEADER: [&str; 18] = [
@@ -190,30 +169,4 @@ fn cells(r: &Row) -> [String; 18] {
         num(r.largest_c_entry),
         num(r.most_arrows),
     ]
-}
-
-fn markdown(rows: &[Row]) -> String {
-    let mut s = format!("| {} | banned first moves | status |\n|{}\n", HEADER.join(" | "), "---|".repeat(HEADER.len() + 2));
-    for r in rows {
-        s += &format!("| {} | {} | {} |\n", cells(r).join(" | "), r.banned_first, r.status);
-    }
-    s
-}
-
-fn csv(rows: &[Row]) -> String {
-    let quote = |c: &str| {
-        if c.contains([',', '"', '\n']) {
-            format!("\"{}\"", c.replace('"', "\"\""))
-        } else {
-            c.to_string()
-        }
-    };
-    let mut s = HEADER.iter().map(|h| quote(h)).collect::<Vec<_>>().join(",") + ",banned first moves,status\n";
-    for r in rows {
-        let mut line: Vec<String> = cells(r).iter().map(|c| quote(c)).collect();
-        line.push(quote(&r.banned_first));
-        line.push(quote(&r.status));
-        s += &(line.join(",") + "\n");
-    }
-    s
 }

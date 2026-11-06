@@ -11,18 +11,18 @@ visit. Quivers with an oriented cycle are refused.
 - `mgs check matrix.csv`: counts, maximal c-vectors, a sample and banned prefixes for one quiver
 - `mgs verify matrix.csv --sequence 1,3,2,3`: check one sequence
 - `mgs explore --atilde 2-4 --steps 1`: the fixed explorations around tame quivers
+- `mgs conjecture7 --max-vertices 5`: Quiver Quest conjecture #7 on every small acyclic quiver with a multiple arrow
 - `web/`: the same engine compiled to WebAssembly, in a static page that runs in the browser.
   It is live at **https://haapavesi-institute.github.io/mgs-checker/**.
 
 ## Quick start
 
 ```sh
-cargo install mgs-cli                  # installs the `mgs` command from crates.io
-# or, from a checkout:
 cargo build --release
 ./target/release/mgs check examples/double-then-single.csv
 ./target/release/mgs check --arrows "1->2, 2->3, 1->3, 3->4" --max-gap 2
 ./target/release/mgs explore --kronecker --atilde 2-3 --dtilde 4 --format csv --out explore.csv
+./target/release/mgs conjecture7 --max-vertices 5 --jobs 8 --format csv --out conjecture7.csv
 
 ./scripts/build-web.sh                 # needs wasm-pack
 python3 -m http.server -d web 8080     # then open http://localhost:8080
@@ -133,6 +133,46 @@ to relabelling, or up to relabelling and reversal with `--up-to-opposite`
 - the maximal step c-vectors, how many step c-vectors there are, their largest
   entry, the classes on MGS and the most parallel arrows met;
 - the first moves that can never be finished, and why.
+
+## Conjecture #7: deleting the multiple arrows
+
+Quiver Quest conjecture #7 says: if no multiple arrow of Q lies on an oriented
+cycle, then every MGS of Q is an MGS of Q′, the quiver with every bundle of two
+or more arrows deleted, with the same c-vector at every step.
+
+For acyclic quivers, the only ones this checker takes, that is a theorem:
+Igusa–Zhou (arXiv:1902.07375v1) Theorem 3.12, "MGSs of an acyclic quiver Q are
+a subset of the set of Q-ME-free MGSs of its ME-free version, Q′", with the same
+C-matrices. Q-ME-free means no c-vector has both ends of a multiple arrow in
+its support. The open part of #7 is quivers with oriented cycles, so a run here
+tests the engine against the theorem; it cannot settle the conjecture.
+
+- `mgs check` reports it for any quiver with a multiple arrow, as "Conj. #7".
+- `mgs conjecture7 --max-vertices N --max-multiplicity M` checks every
+  connected acyclic quiver with 2 to N vertices, at most M parallel arrows and
+  at least one multiple arrow, once each up to relabelling.
+  - `--class on-cycle` keeps those with a multiple arrow on a cycle of the
+    underlying graph, as in Ã<sub>n</sub>.
+  - `--class on-cycle-no-cut` also drops those with an Igusa–Zhou partition
+    cut (their Theorem 4.3).
+- The page's Conjecture #7 section does the same, for up to 5 vertices.
+
+For each quiver the check walks every MGS the search counted, plays each step
+on Q′ at the same time, and stops at the first step where Q′ disagrees: a step
+that is red there, a different c-vector, or an MGS of Q that leaves Q′ with
+green vertices. It reports the shortest such prefix. It also flags any step
+c-vector that covers both ends of a multiple arrow.
+
+| Vertices | Most arrows | Quivers | Result |
+|---|---|---|---|
+| 2–4 | 2 | 392 | all hold: 346 exact, 46 if no gap |
+| 2–4 | 3 | 2 688 | all hold: 2 556 exact, 132 if no gap |
+| 5 | 2 | 25 694 | all hold: 18 984 exact, 6 710 if no gap, in 1.1 s on 8 threads |
+
+None of these runs found a counterexample or a step c-vector covering a
+multiple arrow, as the theorem says. On 4 vertices, `--class on-cycle-no-cut`
+gives 125 quivers, the same as the acyclic class of the survey behind the board
+post.
 
 ## Validation
 

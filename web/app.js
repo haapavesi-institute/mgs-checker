@@ -135,6 +135,7 @@ function renderReport(r, ms) {
   } else h += `<p>No maximal green sequence found.</p>`;
   for (const a of r.agreements) h += `<p class="muted">${a.agrees ? "✓" : "✗ DISAGREES:"} ${a.what} MGS ${a.expected} by ${esc(a.source)}; found ${a.found ?? "none"}.</p>`;
   if (r.seeds) h += seedsHtml(r);
+  if (r.cut) h += cutHtml(r);
   if (r.sample.length) h += `<details open><summary>${r.sample.length} of them</summary><ul class="seqs">${r.sample.map((s) => `<li>${seq(s)}</li>`).join("")}</ul></details>`;
   if (r.banned.length) {
     h += `<h3>Banned prefixes</h3><p class="muted">Each can never be finished; every shorter prefix can. Tails show a green continuation.</p><div class="scroll" tabindex="0" role="region" aria-label="Banned prefixes"><table><thead><tr><th scope="col">Prefix</th><th scope="col">Why</th><th scope="col">Then</th></tr></thead><tbody>`;
@@ -155,6 +156,23 @@ function seedsHtml(r) {
   h += `<div class="scroll" tabindex="0" role="region" aria-label="Maximal c-vectors"><table><thead><tr><th scope="col">c-vector</th><th scope="col" class="num">Total</th><th scope="col">First at the last step of</th></tr></thead><tbody>`;
   for (const m of s.maximal) h += `<tr><td class="mono">(${m.vector.join(", ")})</td><td class="num">${m.vector.reduce((a, b) => a + b, 0)}</td><td class="mono">${seq(m.prefix)}</td></tr>`;
   return h + `</tbody></table></div>`;
+}
+
+const vec = (v) => `(${v.join(", ")})`;
+function cutHtml(r) {
+  const c = r.cut, v = c.verdict;
+  const scope = { exhausted: "every MGS", "no-gap-theorem": "every MGS", conditional: "every MGS (if the gap assumption holds)" }[r.status.kind] ?? `every MGS of length ≤ ${r.searched_to}`;
+  let text;
+  if (v.verdict === "holds") text = `<span class="badge proved">holds</span>${scope} is an MGS of Q′ = <code>${arrows(c.q_prime)}</code>, with the same c-vector at every step.`;
+  else if (v.verdict === "unfinished") text = `<span class="badge bad">unfinished</span>the walk ran out of its state budget.`;
+  else {
+    const f = v.failure;
+    const what = f.kind === "not-maximal-in-prime" ? `it is an MGS of Q, but ${seq(f.still_green)} are still green in Q′` : f.kind === "red-in-prime" ? `its last step is red in Q′: c = ${vec(f.c_in_q)} in Q, ${vec(f.c_in_prime)} in Q′` : `its last step has c = ${vec(f.c_in_q)} in Q but ${vec(f.c_in_prime)} in Q′`;
+    text = `<span class="badge bad">fails</span>on Q′ = <code>${arrows(c.q_prime)}</code>: ${seq(v.prefix)} — ${what}.`;
+  }
+  let h = `<h3>Conjecture #7</h3><p>Deleting the multiple arrows: ${text}</p>`;
+  if (c.label_covers_multiple) h += `<p class="muted">Note: the last step of ${seq(c.label_covers_multiple[0])} has c = ${vec(c.label_covers_multiple[1])}, covering both ends of a multiple arrow.</p>`;
+  return h;
 }
 
 async function runCheck() {
@@ -246,6 +264,69 @@ $("explore-csv").onclick = () => {
   const cols = ["id", "parent", "base", "change", "arrows", "kind", "settled", "proved", "total", "shortest", "longest", "predicted_longest", "by_length", "classes_on_mgs", "step_c_vectors", "maximal_c", "largest_c_entry", "most_arrows", "banned_first", "status"];
   const q = (v) => (v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   download("mgs-explore.csv", [cols.join(","), ...rows.map((r) => cols.map((c) => q(r[c])).join(","))].join("\n") + "\n", "text/csv");
+};
+
+// ---- conjecture #7 ----------------------------------------------------------
+let c7rows = [];
+let c7total = 0;
+const c7verdict = (r) => (r.verdict === "holds" && !r.proved ? "holds if no gap" : r.verdict);
+function c7summary() {
+  const byN = new Map();
+  for (const r of c7rows) {
+    const m = byN.get(r.vertices) ?? new Map();
+    m.set(c7verdict(r), (m.get(c7verdict(r)) ?? 0) + 1);
+    byN.set(r.vertices, m);
+  }
+  const lines = [...byN].sort((a, b) => a[0] - b[0]).map(([n, m]) => `<li>${n} vertices: ${[...m].map(([v, c]) => `${c.toLocaleString()} ${esc(v)}`).join(", ")}</li>`);
+  const fails = c7rows.filter((r) => r.verdict === "fails").length;
+  $("c7-summary").innerHTML = `<ul>${lines.join("")}</ul><p><strong>${fails ? `${fails} counterexample${fails > 1 ? "s" : ""}` : "No counterexample"}</strong> among ${c7rows.length.toLocaleString()} quivers checked.</p>`;
+}
+function c7addRow(r) {
+  if (c7total > 1000 && r.verdict === "holds") return;
+  const tr = document.createElement("tr");
+  const badge = r.verdict === "holds" ? (r.proved ? '<span class="badge proved">holds</span>' : '<span class="badge tentative">holds if no gap</span>') : r.verdict === "no MGS" ? "no MGS" : `<span class="badge bad">${esc(r.verdict)}</span>`;
+  tr.innerHTML = `<td>${r.id}</td><td class="mono">${arrows(r.arrows)}</td><td>${esc(r.kind)}</td><td>${r.on_cycle ? "yes" : "no"}</td><td>${r.iz_cut ? `k = ${r.iz_cut}` : "none"}</td><td class="num mono">${esc(r.total)}</td><td title="${esc(r.status)}">${badge}</td><td>${esc(r.detail)}</td>`;
+  document.querySelector("#c7-table tbody").append(tr);
+}
+$("c7-run").onclick = async () => {
+  c7rows = [];
+  c7total = 0;
+  document.querySelector("#c7-table tbody").innerHTML = "";
+  $("c7-summary").innerHTML = "";
+  $("c7-table").hidden = false;
+  for (const id of ["c7-run", "c7-csv", "c7-json"]) $(id).disabled = true;
+  $("c7-cancel").disabled = false;
+  const spec = { min_vertices: num("c7-min"), max_vertices: num("c7-max"), max_multiplicity: num("c7-m"), class: $("c7-class").value };
+  $("c7-busy").textContent = "Listing the quivers…";
+  try {
+    await call({ kind: "conjecture7", spec, options: options() }, ({ row, progress }) => {
+      c7total = progress.total;
+      if (row) {
+        c7rows.push(row);
+        c7addRow(row);
+        if (c7rows.length % 200 === 0) c7summary();
+      }
+      $("c7-busy").textContent = `${progress.done.toLocaleString()} of ${progress.total.toLocaleString()} quivers checked`;
+    });
+    c7summary();
+  } catch (e) {
+    $("c7-busy").innerHTML = `<span class="error">${esc(e.message)}</span>`;
+  } finally {
+    $("c7-run").disabled = false;
+    $("c7-cancel").disabled = true;
+    $("c7-csv").disabled = $("c7-json").disabled = c7rows.length === 0;
+  }
+};
+$("c7-cancel").onclick = () => {
+  freshWorker();
+  refresh();
+  if (c7rows.length) c7summary();
+};
+$("c7-json").onclick = () => download("mgs-conjecture7.json", JSON.stringify(c7rows, null, 2), "application/json");
+$("c7-csv").onclick = () => {
+  const cols = ["id", "vertices", "arrows", "kind", "on_cycle", "iz_cut", "total", "longest", "verdict", "proved", "detail", "labels_avoid_multiple", "q_prime", "status"];
+  const q = (v) => (v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  download("mgs-conjecture7.csv", [cols.join(","), ...c7rows.map((r) => cols.map((c) => q(r[c])).join(","))].join("\n") + "\n", "text/csv");
 };
 
 refresh();

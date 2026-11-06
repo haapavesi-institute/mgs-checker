@@ -2,6 +2,7 @@
 //! returns JSON strings, and errors come back as a thrown string.
 
 use mgs_core::acyclic::admit;
+use mgs_core::conjecture7;
 use mgs_core::csv::{parse_csv, to_csv};
 use mgs_core::explore::{plan, run, ExploreSpec, Item};
 use mgs_core::known::facts;
@@ -63,6 +64,21 @@ pub fn verify_sequence(input: &str, sequence: &str) -> Result<String, JsValue> {
 pub fn explore_plan(spec: &str) -> Result<String, JsValue> {
     let spec: ExploreSpec = serde_json::from_str(spec).map_err(err)?;
     json(&plan(&spec).map_err(err)?)
+}
+
+/// The quivers a conjecture #7 survey will check. `spec` is a JSON `conjecture7::Spec`.
+#[wasm_bindgen]
+pub fn conjecture7_plan(spec: &str) -> Result<String, JsValue> {
+    let spec: conjecture7::Spec = serde_json::from_str(spec).map_err(err)?;
+    json(&conjecture7::plan(&spec).map_err(err)?)
+}
+
+/// Checks one quiver of a conjecture #7 survey (one `Item` from `conjecture7_plan`).
+#[wasm_bindgen]
+pub fn conjecture7_row(item: &str, options: &str) -> Result<String, JsValue> {
+    let item: conjecture7::Item = serde_json::from_str(item).map_err(err)?;
+    let opts: CheckOptions = serde_json::from_str(options).map_err(err)?;
+    json(&conjecture7::run(&item, &opts).map_err(err)?)
 }
 
 /// Checks one planned quiver (one `Item` from `explore_plan`).

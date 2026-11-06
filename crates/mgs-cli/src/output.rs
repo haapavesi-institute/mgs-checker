@@ -3,6 +3,7 @@
 use std::fmt::Write;
 use std::time::Duration;
 
+use mgs_core::cutting::{CutFailure, CutVerdict};
 use mgs_core::verify::{Verdict, Verification};
 use mgs_core::walk::{BanReason, TailEnd};
 use mgs_core::{Exchange, Report};
@@ -64,6 +65,37 @@ pub fn report_text(r: &Report, took: Duration) -> String {
         }
         if sd.maximal.len() > MAXIMAL_SHOWN {
             let _ = writeln!(s, "  … and {} more (all of them are in --json)", sd.maximal.len() - MAXIMAL_SHOWN);
+        }
+    }
+    if let Some(c) = &r.cut {
+        let scope = if r.status.settled() { "every MGS".to_string() } else { format!("every MGS of length ≤ {}", r.searched_to) };
+        let verdict = match &c.verdict {
+            CutVerdict::Holds => format!("holds: {scope} is an MGS of Q′ = {}, with the same c-vector at every step", c.q_prime),
+            CutVerdict::Unfinished => "unfinished: the walk ran out of its state budget".into(),
+            CutVerdict::Fails { prefix, failure } => {
+                let what = match failure {
+                    CutFailure::RedInPrime { c_in_q, c_in_prime } => {
+                        format!("its last step is red in Q′ (c = {} in Q, {} in Q′)", vector(c_in_q), vector(c_in_prime))
+                    }
+                    CutFailure::DifferentCVector { c_in_q, c_in_prime } => {
+                        format!("its last step has c = {} in Q but {} in Q′", vector(c_in_q), vector(c_in_prime))
+                    }
+                    CutFailure::NotMaximalInPrime { still_green } => {
+                        let g: Vec<usize> = still_green.clone();
+                        format!("it is an MGS of Q, but {} are still green in Q′", seq(&g))
+                    }
+                };
+                format!("FAILS on Q′ = {}: {} {what}", c.q_prime, seq(prefix))
+            }
+        };
+        let _ = writeln!(s, "Conj. #7   deleting the multiple arrows {verdict}");
+        if let Some((prefix, v)) = &c.label_covers_multiple {
+            let _ = writeln!(
+                s,
+                "           note: the last step of {} has c = {}, covering both ends of a multiple arrow",
+                seq(prefix),
+                vector(v)
+            );
         }
     }
     if !r.sample.is_empty() {
