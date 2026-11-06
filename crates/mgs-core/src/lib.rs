@@ -1,4 +1,5 @@
-//! Maximal green sequences of quivers given by their exchange matrices.
+//! Maximal green sequences of acyclic quivers given by their exchange
+//! matrices. A quiver with an oriented cycle is refused ([`acyclic::admit`]).
 //!
 //! - [`report::check`] counts every MGS by length. It walks the oriented
 //!   exchange graph one length deeper at a time. It stops when every green
@@ -6,12 +7,15 @@
 //!   `max_gap`, says no longer MGS can exist. It says which of the two
 //!   happened, and lists the banned prefixes: those BHIT 3.3.2 rules out,
 //!   and the empirically infinite ones.
+//!   It also reports what the MGS pass through ([`seeds`]): their step
+//!   c-vectors and the maximal ones under the entrywise order.
 //! - [`verify::verify`] checks one given sequence.
 //! - [`explore`] runs the fixed explorations around tame quivers.
 //!
 //! Convention: Brüstle–Dupont–Pérotin framing (green means c-vector ≥ 0), and
 //! b_ij = #(i → j) − #(j → i). Vertices are 1-based in every input and output.
 
+pub mod acyclic;
 pub mod bhit;
 pub mod canonical;
 pub mod classify;
@@ -25,9 +29,11 @@ pub mod known;
 pub mod matrix;
 pub mod modify;
 pub mod report;
+pub mod seeds;
 pub mod verify;
 pub mod walk;
 
+pub use acyclic::OrientedCycle;
 pub use engine::SearchOptions;
 pub use matrix::{Exchange, MatrixError};
 pub use report::{check, CheckOptions, Report, Status};

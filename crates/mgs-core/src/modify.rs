@@ -1,8 +1,11 @@
 //! One-edge changes to a quiver: raise the multiplicity of an existing arrow
 //! bundle by one, or add a single arrow between two vertices that had none.
+//! A new arrow that would close an oriented cycle is left out, since the
+//! checker accepts only acyclic quivers.
 
 use serde::{Deserialize, Serialize};
 
+use crate::classify::is_acyclic;
 use crate::matrix::Exchange;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,7 +46,9 @@ pub fn changes(q: &Exchange, mods: Mods) -> Vec<Change> {
                 for (from, to) in [(i, j), (j, i)] {
                     let mut r = q.clone();
                     r.set_pair(from, to, 1);
-                    out.push(Change { label: format!("new {}->{}", from + 1, to + 1), quiver: r });
+                    if is_acyclic(&r) {
+                        out.push(Change { label: format!("new {}->{}", from + 1, to + 1), quiver: r });
+                    }
                 }
             }
         }
@@ -64,10 +69,10 @@ mod tests {
             vec![
                 ("1->2 ×1 to ×2".into(), "1->2*2, 2->3".into()),
                 ("new 1->3".into(), "1->2, 1->3, 2->3".into()),
-                ("new 3->1".into(), "1->2, 2->3, 3->1".into()),
                 ("2->3 ×1 to ×2".into(), "1->2, 2->3*2".into()),
             ]
         );
-        assert_eq!(changes(&q, Mods { multiplicity: false, new_edge: true }).len(), 2);
+        assert_eq!(changes(&q, Mods { multiplicity: false, new_edge: true }).len(), 1);
+        // 3 -> 1 would close 1 -> 2 -> 3
     }
 }

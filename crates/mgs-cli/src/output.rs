@@ -7,8 +7,15 @@ use mgs_core::verify::{Verdict, Verification};
 use mgs_core::walk::{BanReason, TailEnd};
 use mgs_core::{Exchange, Report};
 
+/// Maximal c-vectors printed before "… and N more".
+const MAXIMAL_SHOWN: usize = 40;
+
 fn seq(v: &[usize]) -> String {
     format!("({})", v.iter().map(usize::to_string).collect::<Vec<_>>().join(", "))
+}
+
+fn vector(v: &[i64]) -> String {
+    format!("({})", v.iter().map(i64::to_string).collect::<Vec<_>>().join(", "))
 }
 
 pub fn report_text(r: &Report, took: Duration) -> String {
@@ -40,6 +47,24 @@ pub fn report_text(r: &Report, took: Duration) -> String {
         let verdict = if a.agrees { "agrees" } else { "DISAGREES" };
         let found = a.found.map_or("none".to_string(), |v| v.to_string());
         let _ = writeln!(s, "Literature {} MGS {}, by {}: found {found}, {verdict}", a.what, a.expected, a.source);
+    }
+    if let Some(sd) = &r.seeds {
+        let _ = writeln!(s, "Seeds      the MGS pass through {} classes; the most parallel arrows met is {}", sd.classes, sd.most_arrows);
+        let _ = writeln!(
+            s,
+            "C-vectors  {} distinct at the steps of the MGS, largest entry {}; maximal under the entrywise order ({}):",
+            sd.step_c_vectors,
+            sd.largest_entry,
+            sd.maximal.len()
+        );
+        let shown: Vec<(String, &Vec<usize>)> = sd.maximal.iter().take(MAXIMAL_SHOWN).map(|m| (vector(&m.vector), &m.prefix)).collect();
+        let width = shown.iter().map(|(v, _)| v.chars().count()).max().unwrap_or(0);
+        for (v, prefix) in shown {
+            let _ = writeln!(s, "  {v:<width$}  at the last step of {}", seq(prefix));
+        }
+        if sd.maximal.len() > MAXIMAL_SHOWN {
+            let _ = writeln!(s, "  … and {} more (all of them are in --json)", sd.maximal.len() - MAXIMAL_SHOWN);
+        }
     }
     if !r.sample.is_empty() {
         let _ = writeln!(s, "Sample     {} of them:", r.sample.len());

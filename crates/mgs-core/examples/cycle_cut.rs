@@ -6,12 +6,13 @@
 //!     cargo run --release -p mgs-core --example cycle_cut -- 4 2
 //!
 //! Arguments: vertex count, largest multiplicity. Also runs the tame cycles
-//! Ã(a, b) on 5 and 6 vertices.
+//! Ã(a, b) on 4 and 5 vertices. Like the rest of this repository it looks
+//! only at acyclic quivers.
 
 use std::collections::HashSet;
 
 use mgs_core::canonical::canonical_key;
-use mgs_core::classify::components;
+use mgs_core::classify::{components, is_acyclic};
 use mgs_core::engine::search;
 use mgs_core::framed::Framed;
 use mgs_core::{Exchange, SearchOptions};
@@ -80,8 +81,8 @@ struct Tally {
     mgs_bad: usize,
     skipped: usize,
     bad_lengths: std::collections::BTreeMap<usize, usize>,
-    /// (acyclic, Γ has a multiple edge, length of Γ) → (pairs, pairs that satisfy it)
-    by_class: std::collections::BTreeMap<(bool, bool, usize), (usize, usize)>,
+    /// (Γ has a multiple edge, length of Γ) → (pairs, pairs that satisfy it)
+    by_class: std::collections::BTreeMap<(bool, usize), (usize, usize)>,
     worst: Option<Failure>,
 }
 
@@ -122,7 +123,7 @@ fn survey(q: &Exchange, t: &mut Tally) {
         }
         t.pairs_ok += usize::from(ok);
         let multiple = cycle.iter().any(|&(i, j)| q.get(i, j).abs() >= 2);
-        let e = t.by_class.entry((mgs_core::classify::is_acyclic(q), multiple, cycle.len())).or_insert((0, 0));
+        let e = t.by_class.entry((multiple, cycle.len())).or_insert((0, 0));
         e.0 += 1;
         e.1 += usize::from(ok);
     }
@@ -130,10 +131,9 @@ fn survey(q: &Exchange, t: &mut Tally) {
 
 fn report(label: &str, t: &Tally) {
     println!("{label}: {} of {} (quiver, cycle) pairs satisfy it; {} of {} (MGS, cycle) checks fail; {} quivers skipped (too many MGS or unsettled)", t.pairs_ok, t.pairs, t.mgs_bad, t.mgs, t.skipped);
-    for ((acyclic, multiple, len), (pairs, ok)) in &t.by_class {
+    for ((multiple, len), (pairs, ok)) in &t.by_class {
         println!(
-            "  Q {}, Γ of length {len} {}: {ok} of {pairs} pairs satisfy it",
-            if *acyclic { "acyclic" } else { "cyclic " },
+            "  Γ of length {len} {}: {ok} of {pairs} pairs satisfy it",
             if *multiple { "with a multiple edge" } else { "all single edges" }
         );
     }
@@ -171,13 +171,17 @@ fn main() {
             q.set_pair(i, j, (c % base) as i64 - m);
             c /= base;
         }
-        if components(&q).len() != 1 || !seen.insert(canonical_key(&q, false)) || !cycles(&q).iter().any(|cy| !oriented(&q, cy)) {
+        if components(&q).len() != 1
+            || !is_acyclic(&q)
+            || !seen.insert(canonical_key(&q, false))
+            || !cycles(&q).iter().any(|cy| !oriented(&q, cy))
+        {
             continue;
         }
         quivers += 1;
         survey(&q, &mut t);
     }
-    report(&format!("all {quivers} connected {n}-vertex quivers (multiplicity ≤ {m}) with a non-oriented cycle"), &t);
+    report(&format!("all {quivers} connected acyclic {n}-vertex quivers (multiplicity ≤ {m}) with a cycle in the underlying graph"), &t);
     if n != 4 {
         return;
     }

@@ -1,5 +1,6 @@
-//! `mgs`: check a quiver's maximal green sequences from its exchange matrix,
-//! verify one sequence, or run the fixed explorations around tame quivers.
+//! `mgs`: check an acyclic quiver's maximal green sequences from its exchange
+//! matrix, verify one sequence, or run the fixed explorations around tame
+//! quivers. A quiver with an oriented cycle is refused.
 
 mod explore_cmd;
 mod output;
@@ -19,7 +20,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Count every MGS of a quiver by length, and list banned prefixes.
+    /// Count every MGS of an acyclic quiver by length, list banned prefixes and the maximal c-vectors.
     Check {
         #[command(flatten)]
         input: Input,
@@ -115,7 +116,7 @@ fn run(cli: Cli) -> Result<(), String> {
             let q = input.read()?;
             let opts = CheckOptions { search: search.options(), sample, banned_depth, tail, ..CheckOptions::default() };
             let started = std::time::Instant::now();
-            let report = check(&q, &opts);
+            let report = check(&q, &opts).map_err(|e| e.to_string())?;
             if json {
                 println!("{}", serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?);
             } else {

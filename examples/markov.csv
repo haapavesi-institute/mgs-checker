@@ -1,4 +1,0 @@
-# The Markov quiver 1 => 2 => 3 => 1: no MGS (BDP Prop. 2.21)
-0,2,-2
--2,0,2
-2,-2,0

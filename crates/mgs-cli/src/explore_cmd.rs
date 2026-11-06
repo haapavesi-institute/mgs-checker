@@ -146,11 +146,30 @@ pub fn run(a: &ExploreArgs) -> Result<(), String> {
     }
 }
 
-const HEADER: [&str; 13] =
-    ["id", "parent", "base", "change", "arrows", "type", "settled", "proved", "total", "shortest", "longest", "lit. longest", "by length"];
+const HEADER: [&str; 18] = [
+    "id",
+    "parent",
+    "base",
+    "change",
+    "arrows",
+    "type",
+    "settled",
+    "proved",
+    "total",
+    "shortest",
+    "longest",
+    "lit. longest",
+    "by length",
+    "classes on MGS",
+    "step c-vectors",
+    "maximal c-vectors",
+    "largest c entry",
+    "most arrows",
+];
 
-fn cells(r: &Row) -> [String; 13] {
+fn cells(r: &Row) -> [String; 18] {
     let opt = |x: Option<u32>| x.map_or(String::new(), |v| v.to_string());
+    let num = |x: Option<i64>| x.map_or(String::new(), |v| v.to_string());
     [
         r.id.to_string(),
         r.parent.map_or(String::new(), |p| p.to_string()),
@@ -165,6 +184,11 @@ fn cells(r: &Row) -> [String; 13] {
         opt(r.longest),
         opt(r.predicted_longest),
         r.by_length.clone(),
+        r.classes_on_mgs.map_or(String::new(), |v| v.to_string()),
+        r.step_c_vectors.map_or(String::new(), |v| v.to_string()),
+        r.maximal_c.clone(),
+        num(r.largest_c_entry),
+        num(r.most_arrows),
     ]
 }
 

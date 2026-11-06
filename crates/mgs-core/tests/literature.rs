@@ -7,7 +7,7 @@ use mgs_core::{check, CheckOptions, Exchange, Report, SearchOptions, Status};
 
 fn run(text: &str, max_gap: u32) -> Report {
     let q = Exchange::from_arrow_text(text, None).unwrap();
-    check(&q, &CheckOptions { search: SearchOptions { max_gap, ..SearchOptions::default() }, ..CheckOptions::default() })
+    check(&q, &CheckOptions { search: SearchOptions { max_gap, ..SearchOptions::default() }, ..CheckOptions::default() }).unwrap()
 }
 
 fn by_length(r: &Report) -> Vec<(u32, u128)> {
@@ -24,9 +24,6 @@ fn finite_type_and_pruned_quivers_match_the_typescript_engine() {
         ("1->2", 2, &[1, 1]),
         ("1->2, 2->3", 3, &[1, 4, 2, 2]),
         ("1->2, 3->2", 3, &[2, 2, 2, 4]),
-        ("1->2, 2->3, 3->1", 4, &[6, 3]),
-        ("1->2, 2->3, 3->4, 4->1", 6, &[32, 44, 20, 16]),
-        ("1->2, 3->2, 2->4, 4->1, 4->3", 5, &[6, 24, 40, 22, 18, 16, 24]),
         ("1->2, 2->3, 2->4", 4, &[2, 10, 10, 26, 16, 18, 24, 72, 72]),
         ("1->2*2", 2, &[1]),
         ("1->2*3", 2, &[1]),
@@ -42,8 +39,18 @@ fn finite_type_and_pruned_quivers_match_the_typescript_engine() {
         assert_eq!(r.status, Status::Exhausted, "{text}");
         assert_eq!(by_length(&r), counts(start, xs), "{text}");
     }
-    let markov = run("1->2*2, 2->3*2, 3->1*2", 0); // BDP Prop. 2.21: no MGS
-    assert_eq!((markov.status, markov.total.as_str()), (Status::Exhausted, "0"));
+}
+
+#[test]
+fn quivers_with_an_oriented_cycle_are_refused() {
+    for (text, cycle) in [
+        ("1->2, 2->3, 3->1", vec![1, 2, 3, 1]),
+        ("1->2*2, 2->3*2, 3->1*2", vec![1, 2, 3, 1]), // the Markov quiver
+        ("1->2, 3->2, 2->4, 4->1, 4->3", vec![1, 2, 4, 1]),
+    ] {
+        let q = Exchange::from_arrow_text(text, None).unwrap();
+        assert_eq!(check(&q, &CheckOptions::default()).unwrap_err().cycle, cycle, "{text}");
+    }
 }
 
 #[test]
@@ -61,6 +68,34 @@ fn e6_and_e7_bdp_appendix_b() {
     let e7 = run("1->2, 2->3, 3->4, 4->5, 5->6, 4->7", 0);
     assert_eq!((e7.total.as_str(), e7.longest), ("372133972845031649851164", Some(63)));
     assert!(e7.agreements.iter().all(|a| a.agrees));
+}
+
+fn maximal(r: &Report) -> Vec<Vec<i64>> {
+    r.seeds.as_ref().unwrap().maximal.iter().map(|m| m.vector.clone()).collect()
+}
+
+#[test]
+fn dynkin_step_c_vectors_are_the_positive_roots_with_the_highest_root_on_top() {
+    // BDP Thm 4.4: the longest MGS mutates every positive root once.
+    for (text, roots, highest) in [
+        ("1->2, 2->3, 3->4, 4->5, 3->6", 36, vec![1, 2, 3, 2, 1, 2]),          // E6
+        ("1->2, 2->3, 3->4, 4->5, 5->6, 4->7", 63, vec![1, 2, 3, 4, 3, 2, 2]), // E7
+        ("2->1, 3->2, 2->4, 4->5", 20, vec![1, 2, 1, 2, 1]),                   // D5: 2 on the branch point and the long arm
+    ] {
+        let r = run(text, 0);
+        assert_eq!(r.seeds.as_ref().unwrap().step_c_vectors, roots, "{text}");
+        assert_eq!(maximal(&r), vec![highest], "{text}");
+    }
+}
+
+#[test]
+fn tame_quivers_have_several_maximal_c_vectors() {
+    // Values found by this checker, kept as a regression record.
+    let a2 = run("1->2, 2->3, 1->3", 0);
+    assert_eq!(maximal(&a2), vec![vec![1, 1, 0], vec![1, 0, 1], vec![0, 1, 1]]);
+    let d4 = run("1->5, 2->5, 3->5, 4->5", 0);
+    assert_eq!(d4.seeds.as_ref().unwrap().step_c_vectors, 33);
+    assert_eq!(maximal(&d4), vec![vec![2, 1, 1, 1, 3], vec![1, 2, 1, 1, 3], vec![1, 1, 2, 1, 3], vec![1, 1, 1, 2, 3]]);
 }
 
 #[test]
@@ -84,8 +119,8 @@ fn tame_quivers_are_exact_by_the_no_gap_theorem() {
 
 #[test]
 fn a_larger_gap_only_searches_further() {
-    let g0 = run("1->2*2, 2->3, 3->4, 4->1", 0);
-    let g3 = run("1->2*2, 2->3, 3->4, 4->1", 3);
+    let g0 = run("1->2, 2->3, 1->3, 3->4", 0); // wild (Ã2 with a tail), so the gap stop is conditional
+    let g3 = run("1->2, 2->3, 1->3, 3->4", 3);
     assert_eq!(g0.total, g3.total);
     assert!(g3.searched_to >= g0.searched_to + 3 || g3.status == Status::Exhausted);
 }

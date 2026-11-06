@@ -5,13 +5,14 @@ members = ["crates/mgs-core", "crates/mgs-cli", "crates/mgs-wasm"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+authors = ["Ian Joiner"]
 license = "Apache-2.0"
 repository = "https://github.com/haapavesi-institute/mgs-checker"
 homepage = "https://haapavesi-institute.github.io/mgs-checker/"
-publish = false
+keywords = ["cluster-algebra", "quiver", "green-sequence", "mutation", "mathematics"]
 
 [workspace.dependencies]
-mgs-core = { path = "crates/mgs-core" }
+mgs-core = { path = "crates/mgs-core", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rustc-hash = "2"

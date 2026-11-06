@@ -1,11 +1,14 @@
 # MGS Checker
 
-Counts every maximal green sequence (MGS) of a quiver by length, exactly,
-from its exchange matrix. It also lists the green prefixes that can never be
-finished, and says how sure it is: proved, proved by a theorem, or exact on the
-assumption of BDP's No Gap Conjecture with a gap you choose.
+Counts every maximal green sequence (MGS) of an acyclic quiver by length,
+exactly, from its exchange matrix. It also lists the green prefixes that can
+never be finished, and says how sure it is: proved, proved by a theorem, or
+exact on the assumption of BDP's No Gap Conjecture with a gap you choose. And
+it records what the MGS pass through: the c-vectors of their steps, the
+maximal ones under the entrywise order, and the exchange-graph classes they
+visit. Quivers with an oriented cycle are refused.
 
-- `mgs check matrix.csv`: count, sample and banned prefixes for one quiver
+- `mgs check matrix.csv`: counts, maximal c-vectors, a sample and banned prefixes for one quiver
 - `mgs verify matrix.csv --sequence 1,3,2,3`: check one sequence
 - `mgs explore --atilde 2-4 --steps 1`: the fixed explorations around tame quivers
 - `web/`: the same engine compiled to WebAssembly, in a static page that runs in the browser.
@@ -14,6 +17,8 @@ assumption of BDP's No Gap Conjecture with a gap you choose.
 ## Quick start
 
 ```sh
+cargo install mgs-cli                  # installs the `mgs` command from crates.io
+# or, from a checkout:
 cargo build --release
 ./target/release/mgs check examples/double-then-single.csv
 ./target/release/mgs check --arrows "1->2, 2->3, 1->3, 3->4" --max-gap 2
@@ -41,6 +46,13 @@ and an all-text header row are skipped. `1 ⇉ 2 → 3` is
 
 `--arrows "1->2*2, 2->3"` gives the same quiver inline. Vertices are numbered
 from 1 everywhere.
+
+**The quiver must be acyclic.** One with an oriented cycle, such as the Markov
+quiver, is refused, and the error names a cycle:
+`the quiver has an oriented cycle 1 → 2 → 3 → 1; this checker accepts only acyclic quivers`.
+Everything the checker leans on is stated for acyclic quivers: c-vectors are
+real Schur roots, the shortest MGS has length n, and the Dynkin, tame and No
+Gap theorems all concern path algebras.
 
 ## What a check does
 
@@ -78,7 +90,23 @@ from 1 everywhere.
    upgrade the ban to a proved `dead-end`, or find a longer MGS and refute the
    assumption. Each banned prefix comes with a green continuation that keeps
    going when one exists, e.g. `(1, 3, 2, 1, 3, 2, …)`.
-5. **It compares against the literature** whenever the result is settled:
+5. **It records what the MGS pass through.** Each step of an MGS mutates a
+   green vertex, whose c-vector is then a positive real Schur root: the
+   dimension vector of the brick labelling the step. Over every MGS counted, the
+   report gives:
+   - how many distinct step c-vectors there are;
+   - the maximal ones under the entrywise order. The order is partial, so
+     several can be maximal, none above another. Each comes with a shortest
+     green prefix whose last step has that c-vector, and that prefix can be
+     finished;
+   - their largest entry;
+   - how many exchange-graph classes the MGS pass through;
+   - the most parallel arrows in any exchange matrix along the way.
+
+   For a Dynkin quiver the longest MGS mutates every positive root (BDP Thm
+   4.4), so there are |Φ⁺| step c-vectors, and the only maximal one is the
+   highest root.
+6. **It compares against the literature** whenever the result is settled:
    - acyclic quivers: shortest MGS length n (BDP Lemma 2.20, Cor. 2.18);
    - Dynkin quivers: longest |Φ⁺| (BDP Thm 4.4);
    - tame quivers: longest from Kase–Nakashima (arXiv:2010.13996): (a+b−1)(a+b)/2 + ab for Ã(a,b), 2n² − 2n − 2 for D̃<sub>n</sub>, and 78, 159, 390 for Ẽ<sub>6,7,8</sub>.
@@ -94,13 +122,16 @@ A branch whose entries outgrow that is reported as unresolved, never rounded.
 
 They apply 0, 1 or 2 edge changes. A change either raises the multiplicity of
 an existing arrow bundle by one, or adds a single arrow, in either direction,
-between two vertices that had none. Every quiver reached is checked once, up
+between two vertices that had none. A new arrow that would close an oriented
+cycle is never added, so every quiver explored is acyclic. Every quiver reached is checked once, up
 to relabelling, or up to relabelling and reversal with `--up-to-opposite`
 (BDP Prop. 2.15). The table records, for each quiver:
 - where it came from;
 - its type;
 - whether the result is proved or conditional;
 - the counts by length, and the longest MGS against the literature's value;
+- the maximal step c-vectors, how many step c-vectors there are, their largest
+  entry, the classes on MGS and the most parallel arrows met;
 - the first moves that can never be finished, and why.
 
 ## Validation
@@ -112,9 +143,10 @@ to relabelling, or up to relabelling and reversal with `--up-to-opposite`
 | A₅ linear, the other A₄ orientations | counts by length | BDP v1 Figs. 23–24 |
 | E₆, E₇ | 253 085 705 387 and 372 133 972 845 031 649 851 164 | BDP v1 App. B.2.3 |
 | 1 → 2 → 3 ⇉ 4 | 1, 7, 6, 7 at lengths 4–7, exact via BHIT pruning | BDP Ex. 5.5 |
-| Markov quiver | none | BDP Prop. 2.21 |
+| E₆, E₇, D₅ | 36, 63 and 20 step c-vectors, all of Φ⁺; the only maximal one is the highest root | BDP Thm 4.4; Bourbaki's tables |
+| The oriented 3-cycle, the Markov quiver, a 4-vertex quiver with a 3-cycle | refused, with the cycle named | |
 | Ã₂, both squares, Ã(3,1), Ã(4,1), Ã(3,2) | 5, 100, 100, 75, 4 882, 11 346 | BDP Ex. 5.3; Quiver Quest's engine |
-| 15 small quivers, finite type or pruned to exhaustion | counts by length | Quiver Quest's TypeScript engine, an independent implementation |
+| 12 small quivers, finite type or pruned to exhaustion | counts by length | Quiver Quest's TypeScript engine, an independent implementation |
 
 [Quiver Quest](https://www.peacecatgames.com/quiver-quest) is a separate
 TypeScript implementation with exact BigInt counts. Its
@@ -122,7 +154,8 @@ source is not public; the expected values are written out in
 `crates/mgs-core/tests/literature.rs`.
 
 Beyond the tests:
-- E₈ comes out at exactly 5 641 983 835 250 421 910 131 380 897 514 893 004 210 307 550 157 089 MGS in 4.8 s. That agrees with BDP's ≈ 5.641·10⁵¹ and visits exactly E₈'s 25 080 clusters.
+- E₈ comes out at exactly 5 641 983 835 250 421 910 131 380 897 514 893 004 210 307 550 157 089 MGS in 4.8 s (`--max-length 130`). That agrees with BDP's ≈ 5.641·10⁵¹ and visits exactly E₈'s 25 080 clusters. The step c-vectors are its 120 positive roots, and the only maximal one is the highest root, (2, 3, 4, 5, 6, 4, 2, 3) for the path 1 → ⋯ → 7 with 5 → 8.
+- Tame quivers can have several maximal step c-vectors. Ã₂ (1 → 2 → 3, 1 → 3) has three: (1, 1, 0), (1, 0, 1) and (0, 1, 1). D̃₄ with every arrow into the centre has four, (2, 1, 1, 1, 3) and its permutations, among 33 step c-vectors. Ẽ₆ in the orientation below has just one, (10, 6, 3, 6, 3, 6, 3) = 3δ + e₁, among 137.
 - The longest MGS of D̃₄ (22), D̃₅ (38), Ẽ₆ (78), Ẽ₇ (159), Ã(4,2) (23) and Ã(5,1) (20) all agree with Kase–Nakashima.
 - The totals for these tame quivers are exact by the No Gap theorem:
 
@@ -138,7 +171,8 @@ Beyond the tests:
 
 `crates/mgs-core/examples/` has `cycle_cut.rs` and `cycle_cut_detail.rs`.
 They are the survey behind the cycle-cutting conjecture on the Quiver Quest
-board, posted as disproved, and its surviving Ã<sub>n−1,1</sub> case.
+board, posted as disproved, and its surviving Ã<sub>n−1,1</sub> case. Like
+everything here they look only at acyclic quivers.
 
 ## References
 
@@ -150,7 +184,8 @@ board, posted as disproved, and its surviving Ã<sub>n−1,1</sub> case.
 
 ## License
 
-Licensed under the [Apache License, Version 2.0](LICENSE). Unless you explicitly
+Copyright 2026 Ian Joiner. Licensed under the
+[Apache License, Version 2.0](LICENSE); see also [NOTICE](NOTICE). Unless you explicitly
 state otherwise, any contribution you submit for inclusion in this work is
 licensed under the same terms, without any additional terms or conditions
 (section 5 of the license).
