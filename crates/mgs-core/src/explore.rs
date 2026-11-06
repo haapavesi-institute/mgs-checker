@@ -1,6 +1,7 @@
 //! Fixed explorations around tame quivers: start from the chosen families'
-//! orientations, apply one-edge changes `steps` times, and check every
-//! quiver reached (each once, up to relabelling).
+//! acyclic orientations, apply one-edge changes `steps` times, and check
+//! every quiver reached (each once, up to relabelling). Changes that would
+//! close an oriented cycle are never made, so every quiver is acyclic.
 
 use std::collections::HashSet;
 
@@ -107,6 +108,16 @@ pub struct Row {
     pub total: String,
     pub by_length: String,
     pub states: usize,
+    /// Exchange-graph classes the MGS pass through.
+    pub classes_on_mgs: Option<usize>,
+    /// Distinct c-vectors at the steps of the MGS.
+    pub step_c_vectors: Option<usize>,
+    /// The maximal step c-vectors under the entrywise order, e.g. "(1,2,1) (2,1,1)".
+    pub maximal_c: String,
+    /// The largest entry of any step c-vector.
+    pub largest_c_entry: Option<i64>,
+    /// The most parallel arrows in any exchange matrix along an MGS.
+    pub most_arrows: Option<i64>,
     /// First moves that can never be finished, e.g. "2 (BHIT), 3 (tentative)".
     pub banned_first: String,
 }
@@ -114,7 +125,9 @@ pub struct Row {
 /// Checks one planned quiver.
 pub fn run(item: &Item, opts: &CheckOptions) -> Result<Row, String> {
     let q = Exchange::from_rows(item.matrix.clone()).map_err(|e| e.to_string())?;
-    let r = check(&q, &CheckOptions { sample: 0, banned_depth: 1, ..opts.clone() });
+    let r = check(&q, &CheckOptions { sample: 0, banned_depth: 1, ..opts.clone() }).map_err(|e| e.to_string())?;
+    let seeds = r.seeds.as_ref();
+    let vector = |v: &[i64]| format!("({})", v.iter().map(i64::to_string).collect::<Vec<_>>().join(","));
     let banned_first = r
         .banned
         .iter()
@@ -148,6 +161,11 @@ pub fn run(item: &Item, opts: &CheckOptions) -> Result<Row, String> {
         total: r.total,
         by_length: r.by_length.iter().map(|c| format!("{}:{}", c.length, c.count)).collect::<Vec<_>>().join(" "),
         states: r.states,
+        classes_on_mgs: seeds.map(|s| s.classes),
+        step_c_vectors: seeds.map(|s| s.step_c_vectors),
+        maximal_c: seeds.map_or(String::new(), |s| s.maximal.iter().map(|m| vector(&m.vector)).collect::<Vec<_>>().join(" ")),
+        largest_c_entry: seeds.map(|s| s.largest_entry),
+        most_arrows: seeds.map(|s| s.most_arrows),
         banned_first,
     })
 }
@@ -166,6 +184,17 @@ mod tests {
         assert_eq!(rows[1].change, "2->1 ×2 to ×3"); // the canonical labelling of 1 => 2 is 2 => 1
         assert_eq!(rows[1].total, "1");
         assert_eq!(rows[1].banned_first, "1 (BHIT)"); // 1 is the target of the triple arrow from 2
+        assert_eq!((rows[0].maximal_c.as_str(), rows[0].step_c_vectors), ("(1,0) (0,1)", Some(2)));
+    }
+
+    #[test]
+    fn no_planned_quiver_has_an_oriented_cycle() {
+        let spec =
+            ExploreSpec { families: vec![Family::ATilde { rank: 2 }, Family::ATilde { rank: 3 }], steps: 2, ..ExploreSpec::default() };
+        for item in plan(&spec).unwrap() {
+            let q = Exchange::from_rows(item.matrix).unwrap();
+            assert!(crate::classify::is_acyclic(&q), "{} {}: {}", item.base, item.change, q.arrow_text());
+        }
     }
 
     #[test]

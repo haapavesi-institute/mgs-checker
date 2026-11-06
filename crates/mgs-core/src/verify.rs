@@ -3,6 +3,7 @@
 
 use serde::Serialize;
 
+use crate::acyclic::admit;
 use crate::bhit::banned_332;
 use crate::framed::Framed;
 use crate::matrix::Exchange;
@@ -39,8 +40,9 @@ pub struct Verification {
     pub final_permutation: Option<Vec<usize>>,
 }
 
-/// `seq` is 1-based.
+/// `seq` is 1-based. A quiver with an oriented cycle is refused.
 pub fn verify(q: &Exchange, seq: &[usize]) -> Result<Verification, String> {
+    admit(q).map_err(|e| e.to_string())?;
     let n = q.n();
     let mut f = Framed::new(q);
     let mut steps = Vec::with_capacity(seq.len());
@@ -83,5 +85,7 @@ mod tests {
         let v = verify(&q, &[2]).unwrap();
         assert_eq!(v.steps[0].bhit, Some((1, 2)));
         assert!(verify(&q, &[4]).is_err());
+        let cyclic = Exchange::from_arrow_text("1->2, 2->3, 3->1", None).unwrap();
+        assert!(verify(&cyclic, &[1]).unwrap_err().contains("oriented cycle 1 → 2 → 3 → 1"));
     }
 }

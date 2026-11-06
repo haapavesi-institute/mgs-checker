@@ -1,13 +1,16 @@
-//! A complete check of one quiver: the search, what it proves and on what
-//! assumption, the literature cross-checks, a sample of MGS and the banned
-//! prefixes.
+//! A complete check of one acyclic quiver: the search, what it proves and on
+//! what assumption, the literature cross-checks, what the MGS pass through
+//! (step c-vectors and their maximal elements), a sample of MGS and the
+//! banned prefixes.
 
 use serde::{Deserialize, Serialize};
 
+use crate::acyclic::{admit, OrientedCycle};
 use crate::engine::{search, SearchOptions, Stop};
 use crate::framed::Framed;
 use crate::known::{facts, Facts};
 use crate::matrix::Exchange;
+use crate::seeds::Seeds;
 use crate::walk::{BanOptions, BanReason, Banned, Bound};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -128,12 +131,16 @@ pub struct Report {
     pub longest: Option<u32>,
     pub states: usize,
     pub agreements: Vec<Agreement>,
+    /// What the MGS of length ≤ `searched_to` pass through; None if there are none.
+    pub seeds: Option<Seeds>,
     pub sample: Vec<Vec<usize>>,
     /// Empty unless the status is settled.
     pub banned: Vec<Banned>,
 }
 
-pub fn check(q: &Exchange, opts: &CheckOptions) -> Report {
+/// Checks an acyclic quiver; a quiver with an oriented cycle is refused.
+pub fn check(q: &Exchange, opts: &CheckOptions) -> Result<Report, OrientedCycle> {
+    admit(q)?;
     let facts = facts(q);
     let (engine, outcome) = search(q, &opts.search);
     let status = match outcome.stop {
@@ -161,6 +168,7 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Report {
     }
     let start = Framed::new(q);
     let sample = if root.is_some() { engine.sample(&start, bound, opts.sample) } else { Vec::new() };
+    let seeds = engine.seeds(&start, bound);
     let ban = BanOptions {
         depth: opts.banned_depth,
         limit: opts.banned_limit,
@@ -178,7 +186,7 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Report {
         Some(length) => Status::AssumptionFails { max_gap: opts.search.max_gap, length },
         None => status,
     };
-    Report {
+    Ok(Report {
         vertices: q.n(),
         matrix: q.rows(),
         arrows: q.arrow_text(),
@@ -193,7 +201,8 @@ pub fn check(q: &Exchange, opts: &CheckOptions) -> Report {
         longest,
         states: engine.states(),
         agreements,
+        seeds,
         sample,
         banned,
-    }
+    })
 }

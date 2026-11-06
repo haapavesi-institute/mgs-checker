@@ -13,7 +13,6 @@ const EXAMPLES = [
   ["Square", "1->2, 2->3, 1->4, 4->3"],
   ["D̃₄", "1->5, 2->5, 3->5, 4->5"],
   ["1→2→3⇉4 (BDP 5.5)", "1->2, 2->3, 3->4*2"],
-  ["Markov", "1->2*2, 2->3*2, 3->1*2"],
   ["E₆", "1->2, 2->3, 3->4, 4->5, 3->6"],
 ];
 
@@ -54,7 +53,7 @@ let current = null;
 async function refresh() {
   try {
     current = await call({ kind: "describe", input: $("quiver").value });
-    $("parsed").innerHTML = `${current.vertices} vertices: <code>${arrows(current.arrows)}</code> · ${esc(current.facts.kind_name)}`;
+    $("parsed").innerHTML = `${current.vertices} vertices: <code>${arrows(current.arrows)}</code> · ${esc(current.facts.kind_name)}` + (current.rejected ? `<br><span class="error">Refused: ${esc(current.rejected)}.</span>` : "");
     draw(current);
   } catch (e) {
     current = null;
@@ -135,6 +134,7 @@ function renderReport(r, ms) {
     h += `</tbody></table></div>`;
   } else h += `<p>No maximal green sequence found.</p>`;
   for (const a of r.agreements) h += `<p class="muted">${a.agrees ? "✓" : "✗ DISAGREES:"} ${a.what} MGS ${a.expected} by ${esc(a.source)}; found ${a.found ?? "none"}.</p>`;
+  if (r.seeds) h += seedsHtml(r);
   if (r.sample.length) h += `<details open><summary>${r.sample.length} of them</summary><ul class="seqs">${r.sample.map((s) => `<li>${seq(s)}</li>`).join("")}</ul></details>`;
   if (r.banned.length) {
     h += `<h3>Banned prefixes</h3><p class="muted">Each can never be finished; every shorter prefix can. Tails show a green continuation.</p><div class="scroll" tabindex="0" role="region" aria-label="Banned prefixes"><table><thead><tr><th scope="col">Prefix</th><th scope="col">Why</th><th scope="col">Then</th></tr></thead><tbody>`;
@@ -145,6 +145,16 @@ function renderReport(r, ms) {
     h += `</tbody></table></div>`;
   }
   $("result").innerHTML = h;
+}
+
+function seedsHtml(r) {
+  const s = r.seeds;
+  const scope = { exhausted: "every MGS", "no-gap-theorem": "every MGS", conditional: "every MGS, if the gap assumption holds" }[r.status.kind] ?? `the MGS of length ≤ ${r.searched_to}`;
+  let h = `<h3>C-vectors</h3><p>Over ${scope}: <strong>${s.step_c_vectors}</strong> distinct c-vectors at the steps, largest entry <strong>${s.largest_entry}</strong>. The MGS pass through ${s.classes.toLocaleString()} exchange-graph classes, and meet at most ${s.most_arrows} parallel arrows.</p>`;
+  h += `<p class="muted">${s.maximal.length} maximal under the entrywise order (none is ≥ another in every entry), each with a shortest green prefix whose last step has that c-vector.</p>`;
+  h += `<div class="scroll" tabindex="0" role="region" aria-label="Maximal c-vectors"><table><thead><tr><th scope="col">c-vector</th><th scope="col" class="num">Total</th><th scope="col">First at the last step of</th></tr></thead><tbody>`;
+  for (const m of s.maximal) h += `<tr><td class="mono">(${m.vector.join(", ")})</td><td class="num">${m.vector.reduce((a, b) => a + b, 0)}</td><td class="mono">${seq(m.prefix)}</td></tr>`;
+  return h + `</tbody></table></div>`;
 }
 
 async function runCheck() {
@@ -195,7 +205,7 @@ function spec() {
 function addRow(r) {
   const tr = document.createElement("tr");
   const settled = r.settled ? (r.proved ? '<span class="badge proved">exact</span>' : '<span class="badge tentative">if no gap</span>') : '<span class="badge bad">incomplete</span>';
-  tr.innerHTML = `<td>${r.id}</td><td>${arrows(r.base)}</td><td>${arrows(r.change || "—")}</td><td class="mono">${arrows(r.arrows)}</td><td>${esc(r.kind)}</td><td class="num mono">${esc(r.total)}</td><td class="mono">${esc(r.by_length)}</td><td class="num">${r.longest ?? ""}${r.predicted_longest != null ? ` (${r.predicted_longest})` : ""}</td><td>${esc(r.banned_first)}</td><td title="${esc(r.status)}">${settled}</td>`;
+  tr.innerHTML = `<td>${r.id}</td><td>${arrows(r.base)}</td><td>${arrows(r.change || "—")}</td><td class="mono">${arrows(r.arrows)}</td><td>${esc(r.kind)}</td><td class="num mono">${esc(r.total)}</td><td class="mono">${esc(r.by_length)}</td><td class="num">${r.longest ?? ""}${r.predicted_longest != null ? ` (${r.predicted_longest})` : ""}</td><td class="mono">${esc(r.maximal_c)}</td><td>${esc(r.banned_first)}</td><td title="${esc(r.status)}">${settled}</td>`;
   document.querySelector("#explore-table tbody").append(tr);
 }
 $("explore-run").onclick = async () => {
@@ -233,7 +243,7 @@ function download(name, text, type) {
 }
 $("explore-json").onclick = () => download("mgs-explore.json", JSON.stringify(rows, null, 2), "application/json");
 $("explore-csv").onclick = () => {
-  const cols = ["id", "parent", "base", "change", "arrows", "kind", "settled", "proved", "total", "shortest", "longest", "predicted_longest", "by_length", "banned_first", "status"];
+  const cols = ["id", "parent", "base", "change", "arrows", "kind", "settled", "proved", "total", "shortest", "longest", "predicted_longest", "by_length", "classes_on_mgs", "step_c_vectors", "maximal_c", "largest_c_entry", "most_arrows", "banned_first", "status"];
   const q = (v) => (v == null ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   download("mgs-explore.csv", [cols.join(","), ...rows.map((r) => cols.map((c) => q(r[c])).join(","))].join("\n") + "\n", "text/csv");
 };

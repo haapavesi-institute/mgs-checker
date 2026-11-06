@@ -1,6 +1,7 @@
 //! WebAssembly bindings for the browser front end. Every function takes and
 //! returns JSON strings, and errors come back as a thrown string.
 
+use mgs_core::acyclic::admit;
 use mgs_core::csv::{parse_csv, to_csv};
 use mgs_core::explore::{plan, run, ExploreSpec, Item};
 use mgs_core::known::facts;
@@ -25,12 +26,15 @@ fn quiver(input: &str) -> Result<Exchange, JsValue> {
     }
 }
 
-/// The parsed quiver: vertex count, arrows, CSV, and what kind it is.
+/// The parsed quiver: vertex count, arrows, CSV, what kind it is, and why it
+/// is refused (an oriented cycle) or null.
 #[wasm_bindgen]
 pub fn describe(input: &str) -> Result<String, JsValue> {
     let q = quiver(input)?;
     let f = facts(&q);
-    Ok(serde_json::json!({ "vertices": q.n(), "arrows": q.arrow_text(), "list": q.arrows(), "csv": to_csv(&q), "facts": f }).to_string())
+    let rejected = admit(&q).err().map(|e| e.to_string());
+    Ok(serde_json::json!({ "vertices": q.n(), "arrows": q.arrow_text(), "list": q.arrows(), "csv": to_csv(&q), "facts": f, "rejected": rejected })
+        .to_string())
 }
 
 /// The full report (see `mgs_core::report::Report`). `options` is a JSON `CheckOptions`; missing fields take defaults.
@@ -39,7 +43,7 @@ pub fn check_quiver(input: &str, options: &str) -> Result<String, JsValue> {
     let q = quiver(input)?;
     let opts: CheckOptions =
         if options.trim().is_empty() { CheckOptions::default() } else { serde_json::from_str(options).map_err(err)? };
-    json(&check(&q, &opts))
+    json(&check(&q, &opts).map_err(err)?)
 }
 
 /// `sequence` is 1-based, separated by commas or spaces.

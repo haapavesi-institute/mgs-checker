@@ -1,12 +1,15 @@
 [package]
 name = "mgs-core"
-description = "Maximal green sequences of quivers: exact counting by length, BHIT 3.3.2 pruning, and the No Gap stopping rule"
+description = "Maximal green sequences of acyclic quivers: exact counts by length, BHIT 3.3.2 pruning, the No Gap stopping rule, and the maximal c-vectors"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-publish.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories = ["mathematics", "science"]
 
 [dependencies]
 serde.workspace = true
