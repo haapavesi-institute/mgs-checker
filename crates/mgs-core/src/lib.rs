@@ -11,6 +11,8 @@
 //!   c-vectors and the maximal ones under the entrywise order.
 //! - [`verify::verify`] checks one given sequence.
 //! - [`explore`] runs the fixed explorations around tame quivers.
+//! - [`conjecture7`] checks Quiver Quest conjecture #7 ([`cutting`]) on
+//!   every small acyclic quiver with a multiple arrow.
 //!
 //! Convention: Brüstle–Dupont–Pérotin framing (green means c-vector ≥ 0), and
 //! b_ij = #(i → j) − #(j → i). Vertices are 1-based in every input and output.
@@ -19,9 +21,12 @@ pub mod acyclic;
 pub mod bhit;
 pub mod canonical;
 pub mod classify;
+pub mod conjecture7;
 pub mod counts;
 pub mod csv;
+pub mod cutting;
 pub mod engine;
+pub mod enumerate;
 pub mod explore;
 pub mod families;
 pub mod framed;

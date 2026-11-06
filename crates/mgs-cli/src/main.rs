@@ -2,6 +2,8 @@
 //! matrix, verify one sequence, or run the fixed explorations around tame
 //! quivers. A quiver with an oriented cycle is refused.
 
+mod batch;
+mod conjecture7_cmd;
 mod explore_cmd;
 mod output;
 
@@ -51,6 +53,10 @@ enum Command {
     },
     /// Check every quiver one or two edge changes away from chosen tame quivers.
     Explore(explore_cmd::ExploreArgs),
+    /// Quiver Quest conjecture #7 on every connected acyclic quiver with a multiple
+    /// arrow, up to --max-vertices: is each MGS an MGS of the quiver with its
+    /// multiple arrows deleted, with the same c-vectors?
+    Conjecture7(conjecture7_cmd::Conjecture7Args),
 }
 
 #[derive(Args)]
@@ -133,6 +139,7 @@ fn run(cli: Cli) -> Result<(), String> {
             }
         }
         Command::Explore(args) => explore_cmd::run(&args)?,
+        Command::Conjecture7(args) => conjecture7_cmd::run(&args)?,
     }
     Ok(())
 }
