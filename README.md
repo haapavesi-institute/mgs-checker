@@ -254,6 +254,52 @@ They are the survey behind the cycle-cutting conjecture on the Quiver Quest
 board, posted as disproved, and its surviving Ã<sub>n−1,1</sub> case. Like
 everything here they look only at acyclic quivers.
 
+### One cycle: Ã with trees attached (`unicyclic.rs`)
+
+`cargo run --release -p mgs-core --example unicyclic -- N M` surveys every
+connected acyclic quiver on N vertices, with at most M parallel arrows, whose
+underlying graph has exactly one cycle C. Each such quiver has an
+Ã<sub>n</sub> subquiver, with trees attached.
+
+**What is known.** Whether a wild acyclic quiver with four or more vertices
+has finitely many MGS is open (BDP, §5). Known cases:
+- Dynkin and affine quivers (BDP Thms 4.1 and 5.2);
+- quivers with at most three vertices (BDP Thm 5.4);
+- quivers whose ME-free version is finite (Igusa–Zhou Cor 3.14);
+- two orientations of Ã₂ with a pendant vertex (Hofmann, Bonn thesis 2021,
+  Ex. 4.33). He shows that no sincere brick occurs in their MGS.
+
+**A reduction.** For a vertex v, keeping the steps of an MGS whose c-vector
+has c<sub>v</sub> = 0 gives an MGS of Q ∖ v. This is Muller's restriction, which
+is the lattice quotient tors kQ → tors kQ/⟨e<sub>v</sub>⟩ of
+Demonet–Iyama–Reading–Reiten–Thomas. So every step c-vector of Q is either
+a step c-vector of some Q ∖ v, or sincere. An MGS is a sequence of distinct
+c-vectors, so MGS(Q) is finite once every Q ∖ v is MGS-finite and only
+finitely many sincere c-vectors occur. In a one-cycle quiver a sincere
+c-vector covers C.
+
+**Observations on 3–6 vertices**
+- Restriction to C and to every Q ∖ v always gives an MGS: no exception.
+- **No c-vector covers C when C is of type Ã(p, 1)**, that is, when all but
+  one of its arrows point the same way round. This held on 2 123 quivers: 27 on
+  3 vertices with ≤ 3 arrows, 567 on 4 with ≤ 3, 1 296 on 5 with ≤ 2, and 233
+  on 6 with single arrows.
+  - When C carries a multiple arrow this is Igusa–Zhou Thm 3.12, since the
+    c-vectors are ME-free.
+  - Consequently the product of the restrictions, MGS(Q) → ∏<sub>v ∈ C</sub>
+    MGS(Q ∖ v), is finite-to-one. In fact it was injective on all 1 968 of
+    these quivers whose MGS were listed in full. So such a Q is MGS-finite
+    whenever its forests Q ∖ v are.
+- **No c-vector is ≥ 2δ<sub>C</sub> on C when every Q ∖ v (v on C) is a
+  Dynkin forest.** This held on 344 simply laced quivers with 4–6 vertices.
+  Without that hypothesis it fails. With a D̃₄ attached,
+  1 → 2, 1 → 3, 2 → 4, 3 → 4, 4 → 5, 4 → 6 has the c-vector (4, 2, 2, 3, 2, 1).
+- **Cutting an arrow α of C:** deleting the steps whose c-vector has both ends
+  of α in its support always leaves an MGS of the tree Q ∖ α, with no exception.
+  The map is not onto, and its fibres reach 371 on 6 vertices.
+- Simply laced quivers stop by the No Gap rule (max gap 0). On 5 vertices
+  the totals do not change with `--max-gap 8`.
+
 ## References
 
 - Brüstle, Dupont, Pérotin, *On maximal green sequences*, IMRN 2014 (arXiv:1205.2050).
@@ -261,6 +307,9 @@ everything here they look only at acyclic quivers.
 - Hermes, Igusa, *The No Gap Conjecture for tame hereditary algebras*, arXiv:1601.04054.
 - Kase, Nakashima, *Lengths of maximal green sequences for tame path algebras*, arXiv:2010.13996 (preprint).
 - Igusa, Zhou, *Maximal green sequences of quivers with multiple edges*, arXiv:1902.07375 (preprint).
+- Muller, *The existence of a maximal green sequence is not invariant under quiver mutation*, Electron. J. Combin. 23(2) (2016), arXiv:1503.04675.
+- Demonet, Iyama, Reading, Reiten, Thomas, *Lattice theory of torsion classes*, arXiv:1711.01785.
+- Hofmann, PhD thesis, Universität Bonn (2021), d-nb.info/1270571427.
 
 ## License
 
